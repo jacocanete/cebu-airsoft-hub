@@ -1,9 +1,12 @@
+import { useState, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, Flame, Clock, TrendingUp, Search, type LucideIcon } from "lucide-react";
 import { FORUM_CATEGORIES } from "@/lib/constants";
-import { MOCK_POSTS } from "@/lib/mock-data";
 import { PageHeader } from "@/components/shared/page-header";
 import { PostCard } from "@/components/feed/post-card";
+import { FilterGroup } from "@/components/shared/filter-group";
+import { SkeletonList } from "@/components/shared/skeleton-list";
+import { usePostsList } from "@/hooks/use-posts";
 
 export const Route = createFileRoute("/_main/feed/")({
   head: () => ({
@@ -12,17 +15,28 @@ export const Route = createFileRoute("/_main/feed/")({
   component: FeedPage,
 });
 
-const SORT_OPTIONS: { label: string; icon: LucideIcon }[] = [
-  { label: "Hot", icon: Flame },
-  { label: "New", icon: Clock },
-  { label: "Top", icon: TrendingUp },
+const SORT_OPTIONS: { label: string; icon: LucideIcon; value: "hot" | "new" | "top" }[] = [
+  { label: "Hot", icon: Flame, value: "hot" },
+  { label: "New", icon: Clock, value: "new" },
+  { label: "Top", icon: TrendingUp, value: "top" },
 ];
 
-const pinnedPosts = MOCK_POSTS.filter((p) => p.pinned);
-const regularPosts = MOCK_POSTS.filter((p) => !p.pinned);
-
-
 function FeedPage() {
+  const [sort, setSort] = useState<"hot" | "new" | "top">("hot");
+  const [category, setCategory] = useState("All");
+
+  const { data: posts = [], isLoading } = usePostsList({
+    sort,
+    category: category === "All" ? undefined : category,
+  });
+
+  const { pinnedPosts, regularPosts } = useMemo(() => {
+    const pinned: typeof posts = [];
+    const regular: typeof posts = [];
+    for (const p of posts) (p.pinned ? pinned : regular).push(p);
+    return { pinnedPosts: pinned, regularPosts: regular };
+  }, [posts]);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <PageHeader eyebrow="Community" title="Forum" />
@@ -44,11 +58,12 @@ function FeedPage() {
 
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-0.5">
-                {SORT_OPTIONS.map(({ label, icon: Icon }) => (
+                {SORT_OPTIONS.map(({ label, icon: Icon, value }) => (
                   <button
                     key={label}
+                    onClick={() => setSort(value)}
                     className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
-                      label === "Hot"
+                      sort === value
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-foreground"
                     }`}
@@ -69,47 +84,42 @@ function FeedPage() {
             </div>
           </div>
 
-          {pinnedPosts.length > 0 && (
-            <div className="flex flex-col gap-1.5 mb-1.5">
-              {pinnedPosts.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
-            </div>
-          )}
+          {isLoading ? (
+            <SkeletonList count={5} height="h-20" />
+          ) : (
+            <>
+              {pinnedPosts.length > 0 && (
+                <div className="flex flex-col gap-1.5 mb-1.5">
+                  {pinnedPosts.map((post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+                </div>
+              )}
 
-          {pinnedPosts.length > 0 && (
-            <div className="flex items-center gap-3 py-2 mb-1.5">
-              <div className="flex-1 h-px bg-border" />
-              <span className="label-military text-muted-foreground/40">posts</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-          )}
+              {pinnedPosts.length > 0 && (
+                <div className="flex items-center gap-3 py-2 mb-1.5">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="label-military text-muted-foreground/40">posts</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              )}
 
-          <div className="flex flex-col gap-1.5">
-            {regularPosts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </div>
+              <div className="flex flex-col gap-1.5">
+                {regularPosts.map((post) => (
+                  <PostCard key={post.id} post={post} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <aside className="w-full lg:w-60 xl:w-64 shrink-0 flex flex-col gap-3">
-          <div className="border border-border bg-card p-4">
-            <p className="label-military text-primary mb-3">Categories</p>
-            <div className="flex flex-col gap-0.5">
-              {["All", ...FORUM_CATEGORIES].map((cat) => (
-                <button
-                  key={cat}
-                  className={`rounded px-3 py-1.5 text-left text-xs font-semibold uppercase tracking-widest transition-colors ${
-                    cat === "All"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
+          <FilterGroup
+            label="Categories"
+            options={FORUM_CATEGORIES}
+            value={category}
+            onChange={setCategory}
+          />
 
           <div className="border border-border bg-card p-4">
             <p className="label-military text-primary mb-2">Rules of Engagement</p>

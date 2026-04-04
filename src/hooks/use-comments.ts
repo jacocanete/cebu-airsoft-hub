@@ -15,20 +15,21 @@ export function useComments(postId: string) {
     socket.connect();
     socket.emit("post:join", postId);
 
-    socket.on(
-      "comment:new",
-      (comment: CommentWithCount & { parentCommentId?: string | null }) => {
-        qc.setQueryData<CommentWithCount[]>(["comments", postId], (prev) => {
-          if (!prev) return [comment];
-          if (comment.parentCommentId) return prev; // replies handled separately
-          return [...prev, comment];
-        });
-      },
-    );
+    function handleNewComment(
+      comment: CommentWithCount & { parentCommentId?: string | null },
+    ) {
+      qc.setQueryData<CommentWithCount[]>(["comments", postId], (prev) => {
+        if (!prev) return [comment];
+        if (comment.parentCommentId) return prev; // replies handled separately
+        return [...prev, comment];
+      });
+    }
+
+    socket.on("comment:new", handleNewComment);
 
     return () => {
       socket.emit("post:leave", postId);
-      socket.off("comment:new");
+      socket.off("comment:new", handleNewComment);
     };
   }, [postId, qc]);
 

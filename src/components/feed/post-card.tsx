@@ -1,9 +1,20 @@
 import { Link } from "@tanstack/react-router";
 import { MessageSquare, ChevronUp, ChevronDown, Pin } from "lucide-react";
 import { CATEGORY_COLORS, FALLBACK_BADGE } from "@/lib/constants";
-import { MOCK_POSTS } from "@/lib/mock-data";
 
-export function PostCard({ post }: { post: (typeof MOCK_POSTS)[number] }) {
+interface PostCardProps {
+  id: string;
+  title: string;
+  category: string;
+  tags: readonly string[];
+  pinned: boolean;
+  upvotes: number;
+  commentCount: number;
+  author: { username: string };
+  createdAt: string;
+}
+
+export function PostCard({ post }: { post: PostCardProps }) {
   return (
     <article
       className={`flex gap-3 border bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent ${

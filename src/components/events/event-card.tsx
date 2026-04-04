@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { Clock, MapPin, DollarSign } from "lucide-react";
 import { GAME_TYPE_COLORS, EVENT_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
-import { MOCK_EVENTS } from "@/lib/mock-data";
+import type { GameEvent } from "@/types";
 
-export function EventCard({ event }: { event: (typeof MOCK_EVENTS)[number] }) {
+export function EventCard({ event }: { event: GameEvent }) {
   const playerCap = event.playerCap ?? 0;
   const rsvpPercent =
     playerCap > 0 ? Math.round((event.rsvpCount / playerCap) * 100) : 0;

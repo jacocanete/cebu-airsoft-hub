@@ -115,6 +115,7 @@ export type GameEvent = {
   gameSite: string;
   gameType: GameType;
   date: string;
+  time?: string;
   entranceFee?: number;
   lat: number;
   lng: number;
@@ -127,6 +128,64 @@ export type GameEvent = {
   createdAt: string;
 };
 
+// RSVPs
+
+export type RSVPStatus = "GOING" | "MAYBE" | "CANCELLED";
+
+// Posts — list and detail shapes returned by the API
+
+export type PostListItem = Pick<
+  Post,
+  "id" | "title" | "category" | "tags" | "pinned" | "createdAt"
+> & {
+  author: { id: string; username: string; name: string };
+  upvotes: number;
+  downvotes: number;
+  commentCount: number;
+  userVote: 1 | -1 | 0;
+};
+
+export type PostDetail = Post & {
+  content: string;
+  votes: Array<{ value: number; userId: string }>;
+  _count: { comments: number };
+  poll?: {
+    question: string;
+    multiSelect: boolean;
+    expiresAt?: string;
+    options: Array<{
+      id: string;
+      text: string;
+      _count?: { votes: number };
+      votes?: number;
+    }>;
+  };
+};
+
+// Users
+
+export type UserProfile = {
+  id: string;
+  username: string;
+  name: string;
+  bio?: string;
+  avatar?: string;
+  gearList?: string;
+  playStyle?: string;
+  createdAt: string;
+  memberships: Array<{ group: { name: string; slug: string } }>;
+  _count: { posts: number; listings: number; rsvps: number };
+};
+
+export type UserPost = {
+  id: string;
+  title: string;
+  category: string;
+  tags: string[];
+  createdAt: string;
+  _count: { comments: number; votes: number };
+};
+
 // Groups
 
 export type Group = {
@@ -136,5 +195,6 @@ export type Group = {
   description?: string;
   logo?: string;
   memberCount: number;
+  gameCount?: number;
   createdAt: string;
 };

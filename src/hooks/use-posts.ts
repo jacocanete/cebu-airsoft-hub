@@ -1,15 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Post, PollDraft } from "@/types";
-
-interface PostListItem
-  extends Pick<Post, "id" | "title" | "category" | "tags" | "pinned" | "createdAt"> {
-  author: { id: string; username: string; name: string };
-  upvotes: number;
-  downvotes: number;
-  commentCount: number;
-  userVote: 1 | -1 | 0;
-}
+import type { PostListItem, PostDetail, PollDraft } from "@/types";
 
 interface PostFilters {
   category?: string;
@@ -18,24 +9,31 @@ interface PostFilters {
 }
 
 export function usePostsList(filters?: PostFilters) {
-  const params = new URLSearchParams();
-  if (filters?.category) params.set("category", filters.category);
-  if (filters?.sort) params.set("sort", filters.sort);
-  if (filters?.q) params.set("q", filters.q);
-
   return useQuery<PostListItem[]>({
-    queryKey: ["posts", filters],
-    queryFn: () => api.get(`/api/posts${params.size ? `?${params}` : ""}`),
+    queryKey: ["posts", filters?.category ?? null, filters?.sort ?? null, filters?.q ?? null],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filters?.category) params.set("category", filters.category);
+      if (filters?.sort) params.set("sort", filters.sort);
+      if (filters?.q) params.set("q", filters.q);
+      return api.get<PostListItem[]>(`/api/posts${params.size ? `?${params}` : ""}`);
+    },
     staleTime: 30 * 1000,
   });
 }
 
 export function usePostDetail(id: string) {
-  return useQuery({
+  return useQuery<PostDetail>({
     queryKey: ["posts", id],
-    queryFn: () => api.get(`/api/posts/${id}`),
+    queryFn: () => api.get<PostDetail>(`/api/posts/${id}`),
     enabled: !!id,
     staleTime: 30 * 1000,
+    select: (post) => ({
+      ...post,
+      upvotes: post.votes.filter((v) => v.value === 1).length,
+      downvotes: post.votes.filter((v) => v.value === -1).length,
+      commentCount: post._count.comments,
+    }),
   });
 }
 

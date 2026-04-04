@@ -1,9 +1,12 @@
+import { useState, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, Users } from "lucide-react";
 import { GAME_TYPES } from "@/lib/constants";
-import { MOCK_EVENTS } from "@/lib/mock-data";
 import { PageHeader } from "@/components/shared/page-header";
 import { EventCard } from "@/components/events/event-card";
+import { FilterGroup } from "@/components/shared/filter-group";
+import { SkeletonList } from "@/components/shared/skeleton-list";
+import { useEventsList } from "@/hooks/use-events";
 
 export const Route = createFileRoute("/_main/events/")({
   head: () => ({
@@ -11,25 +14,51 @@ export const Route = createFileRoute("/_main/events/")({
   }),
   component: EventsPage,
 });
+
 function EventsPage() {
+  const [tab, setTab] = useState<"Upcoming" | "Past">("Upcoming");
+  const [gameType, setGameType] = useState("All");
+
+  const { data: events = [], isLoading } = useEventsList();
+
+  const { filtered, upcomingCount, totalRsvps } = useMemo(() => {
+    let upcomingCount = 0;
+    let totalRsvps = 0;
+    const filtered = events.filter((e) => {
+      const isPast = e.status === "Completed" || e.status === "Cancelled";
+      if (!isPast) upcomingCount++;
+      totalRsvps += e.rsvpCount ?? 0;
+      if (tab === "Upcoming" && isPast) return false;
+      if (tab === "Past" && !isPast) return false;
+      if (gameType !== "All" && e.gameType !== gameType) return false;
+      return true;
+    });
+    return { filtered, upcomingCount, totalRsvps };
+  }, [events, tab, gameType]);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <PageHeader eyebrow="Operations" title="Game Events" description="Find upcoming airsoft games in Cebu. RSVP to lock in your slot." />
+      <PageHeader
+        eyebrow="Operations"
+        title="Game Events"
+        description="Find upcoming airsoft games in Cebu. RSVP to lock in your slot."
+      />
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:gap-8">
         <div className="flex-1 min-w-0">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-0.5">
-              {["Upcoming", "Past"].map((tab) => (
+              {(["Upcoming", "Past"] as const).map((t) => (
                 <button
-                  key={tab}
+                  key={t}
+                  onClick={() => setTab(t)}
                   className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
-                    tab === "Upcoming"
+                    tab === t
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   }`}
                 >
-                  {tab}
+                  {t}
                 </button>
               ))}
             </div>
@@ -43,31 +72,24 @@ function EventsPage() {
             </Link>
           </div>
 
-          <div className="flex flex-col gap-3">
-            {MOCK_EVENTS.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
+          {isLoading ? (
+            <SkeletonList count={4} height="h-28" className="gap-3" />
+          ) : (
+            <div className="flex flex-col gap-3">
+              {filtered.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          )}
         </div>
 
         <aside className="w-full lg:w-60 xl:w-64 shrink-0 flex flex-col gap-3">
-          <div className="border border-border bg-card p-4">
-            <p className="label-military text-primary mb-3">Game Type</p>
-            <div className="flex flex-col gap-0.5">
-              {["All", ...GAME_TYPES].map((type) => (
-                <button
-                  key={type}
-                  className={`rounded px-3 py-1.5 text-left text-xs font-semibold uppercase tracking-widest transition-colors ${
-                    type === "All"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          </div>
+          <FilterGroup
+            label="Game Type"
+            options={GAME_TYPES}
+            value={gameType}
+            onChange={setGameType}
+          />
 
           <div className="border border-border bg-card p-4">
             <p className="label-military text-primary mb-2">Hosting a game?</p>
@@ -90,17 +112,12 @@ function EventsPage() {
             </div>
             <div className="flex flex-col gap-2">
               {[
-                { label: "Upcoming Games", value: "4" },
-                { label: "Players RSVP'd", value: "95" },
-                { label: "This Month", value: "12 games" },
+                { label: "Upcoming Games", value: upcomingCount },
+                { label: "Players RSVP'd", value: totalRsvps },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between">
-                  <span className="label-military text-muted-foreground">
-                    {label}
-                  </span>
-                  <span className="text-sm font-black text-primary">
-                    {value}
-                  </span>
+                  <span className="label-military text-muted-foreground">{label}</span>
+                  <span className="text-sm font-black text-primary">{value}</span>
                 </div>
               ))}
             </div>

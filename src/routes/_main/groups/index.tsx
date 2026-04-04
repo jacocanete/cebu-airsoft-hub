@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, Search } from "lucide-react";
-import { MOCK_GROUPS } from "@/lib/mock-data";
 import { PageHeader } from "@/components/shared/page-header";
 import { GroupCard } from "@/components/groups/group-card";
+import { SkeletonList } from "@/components/shared/skeleton-list";
+import { useGroups } from "@/hooks/use-groups";
 
 export const Route = createFileRoute("/_main/groups/")({
   head: () => ({
@@ -12,9 +13,15 @@ export const Route = createFileRoute("/_main/groups/")({
 });
 
 function GroupsPage() {
+  const { data: groups = [], isLoading } = useGroups();
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <PageHeader eyebrow="Units" title="Groups &amp; Teams" description="Register your airsoft team and connect with other groups in Cebu." />
+      <PageHeader
+        eyebrow="Units"
+        title="Groups &amp; Teams"
+        description="Register your airsoft team and connect with other groups in Cebu."
+      />
 
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-sm">
@@ -35,11 +42,15 @@ function GroupsPage() {
         </Link>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {MOCK_GROUPS.map((group) => (
-          <GroupCard key={group.slug} group={group} />
-        ))}
-      </div>
+      {isLoading ? (
+        <SkeletonList count={6} height="h-36" className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" />
+      ) : (
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {groups.map((group) => (
+            <GroupCard key={group.slug} group={group} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

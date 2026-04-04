@@ -1,12 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { CONDITION_COLORS, LISTING_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
-import { MOCK_LISTINGS } from "@/lib/mock-data";
+import type { MarketplaceListing } from "@/types";
 
-export function ListingCard({
-  listing,
-}: {
-  listing: (typeof MOCK_LISTINGS)[number];
-}) {
+export function ListingCard({ listing }: { listing: MarketplaceListing }) {
   return (
     <Link
       to="/marketplace/$id"

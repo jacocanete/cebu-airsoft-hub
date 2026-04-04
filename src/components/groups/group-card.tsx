@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Shield, Users } from "lucide-react";
-import { MOCK_GROUPS } from "@/lib/mock-data";
+import type { Group } from "@/types";
 
-export function GroupCard({ group }: { group: (typeof MOCK_GROUPS)[number] }) {
+export function GroupCard({ group }: { group: Group }) {
   return (
     <Link
       to="/groups/$slug"

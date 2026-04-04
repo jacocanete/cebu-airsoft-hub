@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Menu, ChevronDown } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 
 const navLinks = [
   { href: "/feed", label: "Forum" },
@@ -18,19 +19,21 @@ const navLinks = [
   { href: "/groups", label: "Groups" },
 ] as const;
 
-const mockUser = null as null | {
-  name: string;
-  username: string;
-  avatar?: string;
-};
-
 export function Navbar() {
+  const navigate = useNavigate();
+  const { data: session } = useCurrentUser();
+  const logout = useLogout();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const user = session?.user ?? null;
+
+  function handleLogout() {
+    logout.mutate(undefined, { onSuccess: () => navigate({ to: "/" }) });
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 shrink-0">
           <img
             src="/logo.png"
@@ -44,7 +47,6 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop nav */}
         <nav className="hidden flex-1 items-center gap-0.5 md:flex ml-6">
           {navLinks.map((link) => (
             <Link
@@ -58,16 +60,15 @@ export function Navbar() {
           ))}
         </nav>
 
-        {/* Desktop right side */}
         <div className="hidden md:flex items-center gap-2 ml-auto">
-          {mockUser ? (
+          {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 rounded outline-none ring-ring focus:ring-2 cursor-pointer">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={mockUser.avatar} />
+                    <AvatarImage src={undefined} />
                     <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
-                      {mockUser.name[0]}
+                      {user.name[0]}
                     </AvatarFallback>
                   </Avatar>
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -77,7 +78,7 @@ export function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link
                     to="/profile/$username"
-                    params={{ username: mockUser.username }}
+                    params={{ username: user.username }}
                     className="w-full"
                   >
                     My Profile
@@ -100,7 +101,7 @@ export function Navbar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive">
+                <DropdownMenuItem variant="destructive" onSelect={handleLogout}>
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -123,7 +124,6 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile hamburger */}
         <div className="ml-auto md:hidden">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
@@ -139,7 +139,6 @@ export function Navbar() {
               className="w-72 border-l border-border bg-background px-6 pt-10"
             >
               <div className="flex flex-col gap-6">
-                {/* Mobile logo */}
                 <Link
                   to="/"
                   className="flex items-center gap-2.5 font-bold"
@@ -155,7 +154,6 @@ export function Navbar() {
                   Detachment Reaper
                 </Link>
 
-                {/* Mobile nav links */}
                 <nav className="flex flex-col gap-0.5">
                   {navLinks.map((link) => (
                     <Link
@@ -169,7 +167,6 @@ export function Navbar() {
                   ))}
                 </nav>
 
-                {/* Mobile auth buttons */}
                 <div className="flex flex-col gap-2 pt-2 border-t border-border">
                   <Link
                     to="/login"

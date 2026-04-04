@@ -1,5 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+import { useRegister } from "@/hooks/use-auth";
+import { AuthHeader } from "@/components/shared/auth-header";
 
 export const Route = createFileRoute("/_auth/register")({
   head: () => ({
@@ -9,28 +12,34 @@ export const Route = createFileRoute("/_auth/register")({
 });
 
 function RegisterPage() {
+  const navigate = useNavigate();
+  const register = useRegister();
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+    setPasswordError("");
+    register.mutate(
+      { name, username, email, password },
+      { onSuccess: () => navigate({ to: "/feed" }) },
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <Link to="/" className="inline-block mb-6">
-            <img
-              src="/hero-logo.png"
-              alt="Detachment Reaper"
-              width={64}
-              height={64}
-              className="h-16 w-16 mx-auto"
-            />
-          </Link>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">
-            Join the ranks
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create your operator account
-          </p>
-        </div>
+        <AuthHeader title="Join the ranks" subtitle="Create your operator account" />
 
-        <form className="flex flex-col gap-4">
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label
@@ -44,6 +53,9 @@ function RegisterPage() {
                 type="text"
                 placeholder="Ghost"
                 autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
                 className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
               />
             </div>
@@ -59,6 +71,9 @@ function RegisterPage() {
                 type="text"
                 placeholder="ghost_reaper"
                 autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
                 className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
               />
             </div>
@@ -76,6 +91,9 @@ function RegisterPage() {
               type="email"
               placeholder="operator@example.com"
               autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
               className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
             />
           </div>
@@ -92,6 +110,9 @@ function RegisterPage() {
               type="password"
               placeholder="••••••••"
               autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
               className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
             />
           </div>
@@ -108,15 +129,30 @@ function RegisterPage() {
               type="password"
               placeholder="••••••••"
               autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
               className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
             />
+            {passwordError && (
+              <p className="mt-1 text-xs text-red-400">{passwordError}</p>
+            )}
           </div>
+
+          {register.error && (
+            <p className="text-xs text-red-400">
+              {register.error instanceof Error
+                ? register.error.message
+                : "Registration failed"}
+            </p>
+          )}
 
           <button
             type="submit"
-            className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded bg-primary text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85 glow-red"
+            disabled={register.isPending}
+            className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded bg-primary text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85 glow-red disabled:opacity-60"
           >
-            Create account
+            {register.isPending ? "Creating account…" : "Create account"}
             <ArrowRight className="h-4 w-4" />
           </button>
         </form>
