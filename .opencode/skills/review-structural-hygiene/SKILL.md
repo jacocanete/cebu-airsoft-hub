@@ -9,31 +9,31 @@ metadata:
 
 ## What I Do
 
-Run a comprehensive structural hygiene audit of the Detachment Reaper codebase. This is Pass 1 of a 5-pass code quality review. I examine every file for structural issues that affect maintainability, readability, and Next.js best practices.
+Run a comprehensive structural hygiene audit of the Detachment Reaper codebase. This is Pass 1 of a 6-pass code quality review. I examine every file for structural issues that affect maintainability, readability, and adherence to project conventions.
 
-> **Before starting:** Load the `codebase-reference` skill to understand the project's tech stack, directory structure, conventions, and patterns. All findings should be grounded in that context.
+> **Before starting:** Load the `codebase-reference` skill to understand the project's tech stack, directory conventions, naming rules, and patterns. All findings must be grounded in that context.
 
 ## When to Use Me
 
-Use this skill when you want a thorough structural review of the codebase. Run this as the first pass before deeper reviews (DRY, React patterns, performance, accessibility).
+Use this skill when you want a thorough structural review of the codebase. Run this as the first pass before deeper reviews (DRY, React patterns, performance, accessibility, backend).
 
 ## Review Procedure
 
 ### Step 1: Scan for Oversized Files
 
-Search every `.ts` and `.tsx` file in `src/`. Count the lines in each file. Flag files exceeding these thresholds:
+Search every `.ts` and `.tsx` file in `src/` and `server/src/`. Count the lines in each file. Flag files exceeding these thresholds:
 
 - **Over 200 lines**: Note as "should review for splitting"
 - **Over 500 lines**: Flag as "oversized — likely needs splitting"
 - **Over 1,000 lines**: Flag as "critical — must split"
 
-For each flagged file, briefly describe what it contains and suggest how to split it. For example, a large page component might be split into a main page + extracted sub-components or moved into `src/components/[feature]/`.
+For each flagged file, describe what it contains and suggest how to split it. For example, a large route component might be split into a page file + extracted sub-components moved to `src/components/[feature]/`.
 
 ### Step 2: Find Dead Code
 
 Search for:
 
-- Exported functions/components/types that are never imported anywhere else in the codebase
+- Exported functions, components, or types that are never imported anywhere else in the codebase
 - Files that are never imported by any other file
 - Commented-out code blocks (more than 3 consecutive commented lines)
 - Unused imports within files
@@ -45,25 +45,28 @@ For each finding, report the file path, line number, the dead code, and whether 
 
 Check that code is in the correct directory per the project's conventions (see `codebase-reference`):
 
-- Page-level components belong in `src/app/`
-- Reusable UI components belong in `src/components/[feature]/` or `src/components/ui/`
-- Shared utility functions belong in `src/lib/`
-- Shared TypeScript types belong in `src/types/`
-- When Server Actions are added, they belong in `src/lib/actions/`
-- When validation schemas are added, they belong in `src/lib/validations/`
+- Route-level components and page logic belong in `src/routes/`
+- Reusable components used across multiple routes belong in `src/components/shared/`
+- Feature-specific components belong in `src/components/[feature]/`
+- shadcn/ui primitives and custom UI belong in `src/components/ui/`
+- Data-fetching hooks belong in `src/hooks/` — never inline in components or route files
+- Shared utilities belong in `src/lib/`
+- All shared TypeScript types belong in `src/types/index.ts` — never duplicated elsewhere
+- Backend route handlers belong in `server/src/routes/`
+- Socket.io handlers belong in `server/src/socket/`
 
-Flag any types, utilities, or constants defined inline in component or page files that should be extracted to their proper location.
+Flag any types, utilities, constants, or hook logic defined inline in component or route files that should be in their proper location.
 
-### Step 4: Audit Client/Server Boundaries
+### Step 4: Audit Hook vs Component Boundaries
 
-Check every file in `src/app/` and `src/components/`:
+Data fetching must never leak into components or route files directly. Check:
 
-- Files with `"use client"` that don't actually need it (no hooks, no event handlers, no browser APIs, no state)
-- Page components that should be Server Components but have `"use client"` at the top level instead of pushing it down to child components
-- Client Components that are unnecessarily large — could be split so only the interactive part is a Client Component
-- Server Components that import heavy Client Component libraries unnecessarily
+- **No `useQuery` / `useMutation` calls inside component files** — all React Query hooks must live in `src/hooks/`
+- **No `fetch()` or `api.*` calls inside components** — these belong in hook files only
+- **No `socket.on()` / `socket.emit()` scattered across components** — Socket.io logic belongs in hooks
+- **Route files should be thin** — they call hooks from `src/hooks/` and pass data to components; they do not contain query definitions or data-fetching logic
 
-For each issue, explain what can be moved to a Server Component and what must stay client-side. The goal is to keep as much as possible server-rendered for performance.
+For each violation, note the file, line number, and which hook file it should be moved to.
 
 ### Step 5: Find Multi-Component Files
 
@@ -71,26 +74,64 @@ Search for files that export more than one React component. The project conventi
 
 Exceptions:
 - Small internal helper components (not exported) used only within the same file are fine
-- Component + its loading variant in the same file is acceptable
+- A component paired with a loading/skeleton variant in the same file is acceptable
 
-For each multi-component file, list the components and suggest how to split them.
+For each multi-component file, list the exported components and suggest how to split them.
 
-### Step 6: Check for Missing Route Files
+### Step 6: Check TanStack Router Configuration
 
-For every directory under `src/app/` that has a `page.tsx`, check if these files exist:
+For every dynamic route (files prefixed with `$`) and every authenticated route, check:
 
-- `loading.tsx` — loading UI skeleton (improves perceived performance)
-- `error.tsx` — error boundary (prevents the whole page from crashing on errors)
-- `not-found.tsx` — custom 404 (only needed at root level or specific routes)
+- **Missing `pendingComponent`** — routes that fetch data (use hooks with `useQuery`) should define a `pendingComponent` for the loading state
+- **Missing `errorComponent`** — routes with data dependencies should define an `errorComponent` to prevent the entire page from going blank on errors
+- **Missing auth guards** — protected routes (anything requiring login to use) should have a `beforeLoad` that redirects to `/login` if the user is not authenticated. Check that this is not handled ad-hoc in component bodies.
 
-Note: Currently all pages use mock data, so `loading.tsx` and `error.tsx` are low priority until the backend is wired up. Flag their absence for tracking.
+```tsx
+// Pattern to look for:
+export const Route = createFileRoute("/_main/feed/new")({
+  beforeLoad: ({ context }) => {
+    if (!context.user) throw redirect({ to: "/login" })
+  },
+  pendingComponent: () => <Skeleton />,
+  errorComponent: ({ error }) => <ErrorMessage error={error} />,
+  component: NewPostPage,
+})
+```
 
-### Step 7: Check Component Naming and Import Consistency
+### Step 7: Check Naming and Import Consistency
 
-- Are all components PascalCase (`Navbar.tsx`, `CommentThread.tsx`)?
-- Are all utility/lib files camelCase (`prose.ts`)?
-- Are imports using the `@/` alias consistently (not relative `../../` paths)?
-- Are `next/image` and `next/link` used instead of raw `<img>` and `<a>` tags?
+- Are all route files following TanStack Router naming conventions? (`__root.tsx`, `_layout.tsx`, `$param.tsx`)
+- Are all components PascalCase?
+- Are all utility/lib files camelCase?
+- Are all hook files kebab-case prefixed with `use-`?
+- Are imports using the `@/` alias consistently — no relative `../../` paths?
+- Are there any `<a href>` tags that should use `<Link>` from `@tanstack/react-router`?
+- Are there any raw `<img>` tags that are missing `loading="lazy"`, `width`, `height`, or `decoding="async"` attributes?
+
+### Step 8: TanStack Router Param and Search Access
+
+Check every dynamic route file (`$id.tsx`, `$slug.tsx`, `$username.tsx`) and every route with search params:
+
+- Dynamic params must be accessed via `Route.useParams()` or the typed `useParams` hook — not from `window.location` or URL parsing
+- Search params must be accessed via `Route.useSearch()` — not `window.location.search`
+- Routes reading search params must declare a `validateSearch` function with the expected shape
+
+```tsx
+// CORRECT
+const { id } = Route.useParams()
+const { q } = Route.useSearch()
+
+// WRONG — bypasses the router's type safety
+const id = window.location.pathname.split("/").pop()
+```
+
+### Step 9: Server-Client Type Sync
+
+Check that the types in `src/types/index.ts` match what the backend actually returns. Mismatches here cause silent runtime failures.
+
+- Compare the shape of Prisma queries in `server/src/routes/` (what fields are selected/included) against the corresponding TypeScript types in `src/types/index.ts`
+- Flag any type that has fields the API never returns, or omits fields the API always sends
+- Check that optional fields (`?`) in TypeScript types correspond to fields that are actually nullable or optional in the Prisma query
 
 ## Output Format
 
@@ -99,7 +140,7 @@ Write the results to `docs/code-review/pass-1-structural-hygiene.md` using this 
 ```markdown
 # Pass 1 — Structural Hygiene
 
-Code quality review focusing on file sizes, dead code, misplaced code, client/server boundaries, multi-component files, and missing route files.
+Code quality review focusing on file sizes, dead code, misplaced code, hook/component boundaries, multi-component files, router configuration, and type sync.
 
 ---
 
@@ -118,13 +159,17 @@ Code quality review focusing on file sizes, dead code, misplaced code, client/se
 
 ## 3. Misplaced Code
 
-## 4. Client/Server Boundaries
+## 4. Hook vs Component Boundaries
 
 ## 5. Multi-Component Files
 
-## 6. Missing Route Files
+## 6. TanStack Router Configuration
 
 ## 7. Naming & Import Consistency
+
+## 8. Router Param & Search Access
+
+## 9. Server-Client Type Sync
 
 ---
 
@@ -138,29 +183,6 @@ Code quality review focusing on file sizes, dead code, misplaced code, client/se
 1. ...
 ```
 
-### Step 8: Verify Async Page Props (Next.js 16)
-
-In Next.js 16, `params` and `searchParams` are Promises and must be awaited. Check every dynamic route page (`[id]`, `[slug]`, `[username]`) and every page that reads `searchParams`:
-
-```tsx
-// CORRECT
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-}
-
-// WRONG — id will be undefined at runtime
-export default function Page({ params }: { params: { id: string } }) {
-  const id = params.id;
-}
-```
-
-Search for:
-1. Pages with `params` or `searchParams` props that are NOT `async` functions
-2. Pages with `params` typed as `{ id: string }` instead of `Promise<{ id: string }>`
-3. Pages that access `searchParams.q` or similar without `await`ing first
-
-For each finding, show the corrected async version with proper type signatures.
-
 ## Important Guidelines
 
 - Be exhaustive. Check EVERY file, not just a sample.
@@ -168,5 +190,4 @@ For each finding, show the corrected async version with proper type signatures.
 - Do not guess — verify by searching the codebase for actual imports/usage before flagging something as dead code.
 - For oversized files, actually count the lines.
 - Group related findings together for readability.
-- End with a prioritized summary table and top 5-10 fix recommendations.
-- Remember: this project is currently frontend-only with mock data. Don't flag missing backend patterns as structural issues.
+- End with a prioritized summary table and top 5–10 fix recommendations.

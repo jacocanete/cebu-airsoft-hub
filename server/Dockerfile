@@ -1,13 +1,20 @@
+# Build context must be repo root so prisma/ is reachable
+FROM node:22-alpine AS builder
+WORKDIR /app/server
+COPY server/package*.json ./
+RUN npm ci
+COPY server/tsconfig.json ./
+COPY server/src/ ./src/
+COPY prisma/ /app/prisma/
+RUN npm run build
+
 FROM node:22-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install
-
-COPY tsconfig.json ./
-COPY . .
+WORKDIR /app/server
+COPY --from=builder /app/server/package*.json ./
+RUN npm ci --omit=dev
+COPY --from=builder /app/server/dist ./dist
+COPY --from=builder /app/prisma/ /app/prisma/
+RUN npx prisma generate
 
 EXPOSE 3001
-
-CMD ["npm", "run", "dev"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]

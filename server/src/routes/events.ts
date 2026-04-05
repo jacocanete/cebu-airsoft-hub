@@ -5,10 +5,21 @@ import { requireAuth, optionalAuth, type AuthRequest } from "../middleware/auth.
 
 const router = Router();
 
-router.get("/", optionalAuth, async (_req, res) => {
+router.get("/", optionalAuth, async (req: AuthRequest, res) => {
+  const { q } = req.query as Record<string, string | undefined>;
+
   const events = await prisma.gameEvent.findMany({
+    where: q
+      ? {
+          OR: [
+            { title: { contains: q, mode: "insensitive" as const } },
+            { description: { contains: q, mode: "insensitive" as const } },
+            { locationName: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : undefined,
     include: {
-      org: { select: { id: true, username: true, name: true } },
+      organizer: { select: { id: true, username: true, name: true } },
       _count: { select: { rsvps: true } },
     },
     orderBy: { date: "asc" },
@@ -19,9 +30,9 @@ router.get("/", optionalAuth, async (_req, res) => {
 
 router.get("/:id", optionalAuth, async (req: AuthRequest, res) => {
   const event = await prisma.gameEvent.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
-      org: { select: { id: true, username: true, name: true } },
+      organizer: { select: { id: true, username: true, name: true } },
       rsvps: {
         where: { status: "GOING" },
         include: { user: { select: { id: true, username: true, name: true } } },
@@ -73,7 +84,7 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
       organizerId: req.user!.id,
     },
     include: {
-      org: { select: { id: true, username: true, name: true } },
+      organizer: { select: { id: true, username: true, name: true } },
     },
   });
 
@@ -81,20 +92,24 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
 });
 
 router.post("/:id/rsvp", requireAuth, async (req: AuthRequest, res) => {
-  const { status } = z
+  const parsed = z
     .object({ status: z.enum(["GOING", "MAYBE", "CANCELLED"]) })
-    .parse(req.body);
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const { status } = parsed.data;
+  const eventId = req.params.id as string;
 
   const rsvp = await prisma.rSVP.upsert({
-    where: {
-      userId_eventId: { userId: req.user!.id, eventId: req.params.id },
-    },
-    create: { userId: req.user!.id, eventId: req.params.id, status },
+    where: { userId_eventId: { userId: req.user!.id, eventId } },
+    create: { userId: req.user!.id, eventId, status },
     update: { status },
   });
 
   const rsvpCount = await prisma.rSVP.count({
-    where: { eventId: req.params.id, status: "GOING" },
+    where: { eventId, status: "GOING" },
   });
 
   res.json({ rsvp, rsvpCount });

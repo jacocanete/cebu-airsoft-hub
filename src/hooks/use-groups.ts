@@ -34,6 +34,7 @@ export function useJoinGroup() {
     mutationFn: (slug: string) => api.post(`/api/groups/${slug}/join`, {}),
     onSuccess: (_data, slug) => {
       qc.invalidateQueries({ queryKey: ["groups", slug] });
+      qc.invalidateQueries({ queryKey: ["groups"] });
     },
   });
 }

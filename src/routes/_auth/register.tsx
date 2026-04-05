@@ -162,6 +162,7 @@ function RegisterPage() {
             Already have an account?{" "}
             <Link
               to="/login"
+              search={{ redirect: "" }}
               className="font-semibold text-primary hover:text-primary/80 transition-colors"
             >
               Sign in

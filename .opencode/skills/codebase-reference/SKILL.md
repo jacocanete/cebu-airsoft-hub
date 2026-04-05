@@ -10,7 +10,7 @@ metadata:
 
 **Name:** Detachment Reaper
 **Purpose:** Community platform for airsoft players in Cebu, Philippines. Three pillars: Discussion (forum), Marketplace (buy/sell gear), and Matchmaking (game events).
-**Status:** Frontend-only with mock data. Backend (Prisma + PostgreSQL + NextAuth) planned for a future phase.
+**Status:** Backend fully implemented (Express + Prisma + Better Auth). Frontend wired to real API via React Query. Some routes still transitioning from mock data to live data.
 
 ---
 
@@ -18,133 +18,292 @@ metadata:
 
 | Layer | Technology | Notes |
 |---|---|---|
-| Framework | Next.js 16 (App Router) | Server Components by default |
+| Framework | TanStack Start + Vite 7 | SSR-capable, but project runs as a client-rendered SPA |
+| Router | TanStack Router (file-based) | Routes in `src/routes/`, auto-generated route tree |
 | Language | TypeScript | Strict mode |
+| Data Fetching | React Query (`@tanstack/react-query`) | All server data goes through hooks in `src/hooks/` |
 | Styling | Tailwind CSS v4 | `@import "tailwindcss"` in globals.css |
 | UI Components | shadcn/ui via `@base-ui/react` | **Not Radix UI** — see component notes below |
-| Animations | `motion` (Framer Motion v11+) | `import { motion } from "motion/react"` |
-| Markdown | `react-markdown` + `remark-gfm` | Used in forum post body and editor preview |
-| WebGL | `ogl` | Used for Radar background component |
+| Animations | `motion` (Framer Motion v12+) | `import { motion } from "motion/react"` |
+| Markdown | `react-markdown` + `remark-gfm` | Forum post body and editor preview |
 | Typography | `@tailwindcss/typography` | Registered via `@plugin "@tailwindcss/typography"` in globals.css |
-| Fonts | Geist Sans, Geist Mono, Barlow Condensed (900) | Via `next/font/google` |
-| **Auth** | NextAuth v5 (Auth.js) | **Planned** — not yet implemented |
-| **Database** | PostgreSQL | **Planned** — self-hosted VPS |
-| **ORM** | Prisma | **Planned** — NOT Supabase |
-| **Storage** | Cloudflare R2 | **Planned** — for image uploads |
-| **Maps** | Google Maps JS API | **Planned** — for event location picker |
+| Fonts | Geist Sans, Geist Mono, Barlow Condensed (900) | Via `@fontsource-variable/geist` and `@fontsource/*` packages |
+| Real-time | Socket.io client (`socket.io-client`) | For live comments and RSVP updates only |
+| HTTP Client | Custom `api` wrapper (`src/lib/api.ts`) | Wraps `fetch` with `credentials: "include"`, base URL from `VITE_API_URL` |
+| Backend | Express 5 + Socket.io | Separate package in `server/` |
+| Auth | Better Auth | Email/password + username field. Handles sessions via cookies. |
+| ORM | Prisma 6 | Schema in `prisma/schema.prisma` |
+| Database | PostgreSQL 16 | Docker in dev (port 5432) |
+| Dev Environment | Docker Compose | `docker compose up -d` starts Postgres (5432), API (3001), Web (3000) |
 
 ### Critical: `@base-ui/react` vs Radix UI
 
-This project uses `@base-ui/react` (the new Base UI library), NOT Radix UI. Key differences:
+This project uses `@base-ui/react` (Base UI), NOT Radix UI. Key differences:
 
-- **No `asChild` prop** — use `render` prop instead: `<Button render={<Link href="/" />}>`
+- **No `asChild` prop** — use `render` prop instead: `<Button render={<Link to="/" />}>`
 - **No `asChild` on triggers** — `<SheetTrigger render={<Button />}>`
-- Components are more primitive and composable
 - When reviewing shadcn component usage, verify patterns against `@base-ui/react` API, not Radix
 
 ---
 
-## Directory Structure
+## Code Organization Conventions
 
-```
-src/
-├── app/
-│   ├── (auth)/                    # Auth pages — no navbar/footer
-│   │   ├── login/page.tsx
-│   │   └── register/page.tsx
-│   ├── (main)/                    # Main site — uses Navbar + Footer layout
-│   │   ├── layout.tsx             # Navbar + Footer wrapper
-│   │   ├── page.tsx               # Landing page (/)
-│   │   ├── feed/
-│   │   │   ├── page.tsx           # Forum feed
-│   │   │   ├── new/page.tsx       # Create post form
-│   │   │   ├── search/page.tsx    # Search results
-│   │   │   └── [id]/page.tsx      # Single post + comments
-│   │   ├── marketplace/
-│   │   │   ├── page.tsx           # Browse listings
-│   │   │   ├── new/page.tsx       # Create listing (stub)
-│   │   │   └── [id]/page.tsx      # Single listing (stub)
-│   │   ├── events/
-│   │   │   ├── page.tsx           # Events list
-│   │   │   ├── new/page.tsx       # Create event (stub)
-│   │   │   └── [id]/page.tsx      # Event detail + RSVP
-│   │   ├── groups/
-│   │   │   ├── page.tsx           # Groups list
-│   │   │   ├── new/page.tsx       # Create group (stub)
-│   │   │   └── [slug]/page.tsx    # Group profile (stub)
-│   │   ├── profile/
-│   │   │   └── [username]/page.tsx
-│   │   └── settings/page.tsx      # User settings (stub)
-│   ├── layout.tsx                 # Root layout — sets `class="dark"` on html
-│   └── globals.css                # Tailwind v4 imports, CSS variables, utility classes
-├── components/
-│   ├── ui/                        # shadcn/ui primitives + custom animated components
-│   │   ├── circular-text.tsx      # Spinning circular text (hero)
-│   │   ├── letter-glitch.tsx      # Glitch background (hero)
-│   │   ├── radar.tsx              # Radar WebGL background (available, not in use)
-│   │   └── [shadcn components]    # avatar, badge, card, dropdown-menu, etc.
-│   ├── layout/
-│   │   └── Navbar.tsx             # Sticky navbar with mobile sheet drawer
-│   ├── feed/
-│   │   ├── comment-thread.tsx     # Recursive nested comment tree
-│   │   ├── poll.tsx               # Interactive poll with vote bars
-│   │   ├── poll-builder.tsx       # Poll creation form for new post page
-│   │   └── post-editor.tsx        # Markdown editor with toolbar + preview tab
-│   ├── marketplace/               # (empty — stubs pending)
-│   ├── events/                    # (empty — stubs pending)
-│   ├── profile/                   # (empty — stubs pending)
-│   └── groups/                    # (empty — stubs pending)
-├── lib/
-│   └── prose.ts                   # PROSE_CLASSES — shared Tailwind typography string
-└── types/
-    └── index.ts                   # Shared TypeScript types (User, Post, GameEvent, etc.)
-```
+### Where Things Go
 
----
-
-## Route Map
-
-| URL | Page | Status |
+| What | Where | Notes |
 |---|---|---|
-| `/` | Landing page | Built |
-| `/feed` | Forum feed | Built |
-| `/feed/[id]` | Single post + comments | Built |
-| `/feed/new` | Create post form | Built |
-| `/feed/search` | Search results | Built |
-| `/marketplace` | Browse listings | Built |
-| `/marketplace/[id]` | Single listing | Stub |
-| `/marketplace/new` | Create listing | Stub |
-| `/events` | Events list | Built |
-| `/events/[id]` | Event detail + RSVP | Built |
-| `/events/new` | Create event | Stub |
-| `/groups` | Groups list | Built |
-| `/groups/[slug]` | Group profile | Stub |
-| `/groups/new` | Create group | Stub |
-| `/profile/[username]` | User profile | Built |
-| `/settings` | User settings | Stub |
-| `/login` | Login page | Built (UI only) |
-| `/register` | Register page | Built (UI only) |
+| Route files | `src/routes/` | One file per route, file-based routing |
+| Data-fetching hooks | `src/hooks/` | Every `useQuery`/`useMutation` lives here, never inline in components |
+| Shared reusable components | `src/components/shared/` | Components used across multiple routes |
+| Feature-specific components | `src/components/[feature]/` | Components scoped to a single feature (feed, events, etc.) |
+| shadcn/ui primitives + custom UI | `src/components/ui/` | Do not add business logic here |
+| Shared utilities | `src/lib/` | `api.ts`, `socket.ts`, `constants.ts`, `utils.ts`, `prose.ts` |
+| Shared TypeScript types | `src/types/index.ts` | All shared types live here. Never duplicate across files. |
+| Backend route handlers | `server/src/routes/` | One file per resource (posts, events, etc.) |
+| Auth middleware | `server/src/middleware/auth.ts` | `requireAuth` and `optionalAuth` |
+| Socket.io event handlers | `server/src/socket/` | One file per event domain |
+
+### Naming Conventions
+
+| Pattern | Convention | Examples |
+|---|---|---|
+| Route files | Lowercase with TanStack Router conventions | `__root.tsx`, `_main.tsx`, `$id.tsx`, `$slug.tsx` |
+| Dynamic route segments | Prefixed with `$` | `$id.tsx`, `$slug.tsx`, `$username.tsx` |
+| Pathless layout groups | Prefixed with `_` | `_main.tsx`, `_auth.tsx` |
+| Root layout | Double underscore | `__root.tsx` |
+| Components | PascalCase | `PostCard.tsx`, `CommentThread.tsx` |
+| Utility / lib files | camelCase | `prose.ts`, `api.ts`, `constants.ts` |
+| Hook files | kebab-case prefixed with `use-` | `use-posts.ts`, `use-auth.ts` |
+| Hook functions | camelCase prefixed with `use` | `usePostsList()`, `usePostDetail()`, `useCreatePost()` |
+| Types | PascalCase | `Post`, `GameEvent`, `MarketplaceListing` |
+| Imports | Always use `@/` alias | `import { Post } from "@/types"`, never `../../types` |
+
+### File Size Guidelines
+
+- Under 200 lines: healthy
+- 200–500 lines: review for splitting opportunities
+- Over 500 lines: should be split
+- Over 1,000 lines: must split
+
+### One Component Per File
+
+Each file exports one primary component. Internal helper components (unexported, used only within the same file) are acceptable.
 
 ---
 
-## Data Fetching Approach
+## Data Fetching Patterns
 
-**This project deliberately avoids React Query and Zustand to keep things simple.**
+### The Rule
 
-| Pattern | Our approach |
+**All server data goes through React Query hooks in `src/hooks/`.** Never fetch in `useEffect`. Never fetch directly in components.
+
+| What | Pattern |
 |---|---|
-| Server-side data fetching | Next.js Server Components (`async` functions in page files) |
-| Mutations / form submissions | Next.js Server Actions |
-| Client-side local state | `useState` / `useReducer` only |
-| Global client state | None — pass via props or URL params |
-| Caching | Next.js built-in `fetch` cache + `revalidate` |
-| No React Query | Do not introduce `useQuery`, `useMutation`, `QueryClient` |
-| No Zustand | Do not introduce `create()` stores |
+| Read data | `useQuery` hook in `src/hooks/` |
+| Write / mutate data | `useMutation` hook in `src/hooks/` |
+| Invalidate after mutation | `queryClient.invalidateQueries()` in `onSuccess` |
+| Real-time updates | Socket.io event → `queryClient.setQueryData()` in a `useEffect` within the hook |
+| No global state | No Zustand, no Redux, no Context for server data |
 
-When the backend is built, the pattern will be:
-1. Server Component fetches data via Prisma in the page file
-2. Passes data as props to Client Components for interactivity
-3. Server Actions handle writes (form submissions, RSVP, votes, etc.)
+### Hook File Pattern
+
+```ts
+// src/hooks/use-[resource].ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { api } from "@/lib/api"
+import type { Resource } from "@/types"
+
+export function useResourceList(filters?: Filters) {
+  return useQuery<Resource[]>({
+    queryKey: ["resources", filters],
+    queryFn: () => api.get("/api/resources"),
+  })
+}
+
+export function useCreateResource() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateInput) => api.post("/api/resources", data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["resources"] }),
+  })
+}
+```
+
+### Socket.io Real-time Pattern
+
+Socket.io is for real-time invalidation and live updates only — it is NOT the primary data source. The pattern is:
+
+```ts
+// Inside a hook file (e.g., use-comments.ts)
+export function useComments(postId: string) {
+  const qc = useQueryClient()
+
+  // useEffect for Socket.io room join/leave is LEGITIMATE here — it's side-effect setup
+  useEffect(() => {
+    socket.connect()
+    socket.emit("post:join", postId)
+
+    socket.on("comment:new", (comment) => {
+      qc.setQueryData(["comments", postId], (prev: Comment[]) => [...prev, comment])
+    })
+
+    return () => {
+      socket.emit("post:leave", postId)
+      socket.off("comment:new")
+    }
+  }, [postId, qc])
+
+  return useQuery<Comment[]>({
+    queryKey: ["comments", postId],
+    queryFn: () => api.get(`/api/posts/${postId}/comments`),
+  })
+}
+```
+
+Socket.io rooms used in this project:
+- `post:{postId}` — live comment updates
+- `event:{eventId}` — live RSVP count updates
+- `user:{userId}` — notifications (auto-joined on auth)
+
+### `api.ts` Wrapper
+
+```ts
+// Usage
+import { api, ApiError } from "@/lib/api"
+
+const posts = await api.get<Post[]>("/api/posts")
+const post = await api.post<Post>("/api/posts", body)
+const updated = await api.patch<Post>("/api/posts/123/status", { status: "SOLD" })
+await api.delete("/api/posts/123")
+```
+
+- Base URL from `import.meta.env.VITE_API_URL`
+- Always sends `credentials: "include"` (cookie-based auth)
+- Throws `ApiError` (extends Error) with `status: number` on non-2xx responses
+
+---
+
+## Route File Pattern
+
+```tsx
+// src/routes/_main/feed/index.tsx
+import { createFileRoute } from "@tanstack/react-router"
+
+export const Route = createFileRoute("/_main/feed/")({
+  head: () => ({ meta: [{ title: "Feed — Detachment Reaper" }] }),
+  component: FeedPage,
+})
+
+function FeedPage() {
+  const { data: posts } = usePostsList()
+  // ...
+}
+```
+
+For routes with search params:
+```tsx
+export const Route = createFileRoute("/_main/feed/search")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: (search.q as string) || "",
+  }),
+  component: SearchPage,
+})
+
+function SearchPage() {
+  const { q } = Route.useSearch()
+}
+```
+
+For dynamic param routes, use `Route.useParams()` or the typed `useParams` hook:
+```tsx
+// src/routes/_main/feed/$id.tsx
+export const Route = createFileRoute("/_main/feed/$id")({
+  component: PostPage,
+})
+
+function PostPage() {
+  const { id } = Route.useParams()
+}
+```
+
+---
+
+## Backend Patterns
+
+### Server Route Structure
+
+Every Express route handler follows this order:
+1. Input validation via Zod `safeParse()`
+2. Auth check via `requireAuth` or `optionalAuth` middleware
+3. Prisma query
+4. Response
+
+```ts
+// server/src/routes/posts.ts
+router.post("/", requireAuth, async (req: AuthRequest, res) => {
+  const result = CreatePostSchema.safeParse(req.body)
+  if (!result.success) {
+    return res.status(400).json({ error: result.error.flatten() })
+  }
+  const post = await prisma.post.create({ data: { ...result.data, authorId: req.user!.id } })
+  res.status(201).json(post)
+})
+```
+
+### Auth Middleware
+
+```ts
+// requireAuth — use on all mutation routes (POST, PATCH, DELETE)
+router.post("/", requireAuth, async (req: AuthRequest, res) => {
+  req.user  // { id, email, name, username } — guaranteed present
+  req.session  // { id } — guaranteed present
+})
+
+// optionalAuth — use on reads that need user context (e.g., to show vote state)
+router.get("/", optionalAuth, async (req: AuthRequest, res) => {
+  req.user  // may be undefined
+})
+```
+
+### API Endpoint Conventions
+
+- `GET /api/[resource]` — list (optionalAuth, supports query filters)
+- `POST /api/[resource]` — create (requireAuth, Zod validation)
+- `GET /api/[resource]/:id` — detail (optionalAuth)
+- `POST /api/[resource]/:id/[action]` — nested action (requireAuth)
+- `PATCH /api/[resource]/:id/[field]` — partial update (requireAuth, owner check)
+
+### Error Response Shapes
+
+```ts
+// Validation error
+{ error: { fieldErrors: { title: ["Required"] }, formErrors: [] } }
+
+// Auth error
+{ error: "Unauthorized" }
+
+// Not found
+{ error: "Not found" }
+
+// Unique constraint violation (Prisma P2002 -> 409)
+{ error: "Already exists" }
+
+// Generic server error
+{ error: "Internal server error" }
+```
+
+---
+
+## TypeScript Conventions
+
+Sourced from `AGENTS.md` and `CLAUDE.md`:
+
+- All shared types in `src/types/index.ts`, imported as `import type { X } from "@/types"`
+- Constant-derived types (e.g., `ForumCategory` from `FORUM_CATEGORIES`) are re-exported from `@/types` via `src/lib/constants.ts`
+- Component props interfaces stay local to their file — do not export them to `src/types/`
+- Never duplicate type shapes across files
+- Never use `any` — use `unknown` and narrow, or define the actual type
+- Avoid unsafe type assertions (`as SomeType`) unless unavoidable — add a comment explaining why
 
 ---
 
@@ -191,33 +350,30 @@ In Tailwind: use `bg-primary`, `text-primary`, `border-primary` etc. — never h
 - **Tactical vocabulary** — "Operators" not "Users", "Deploy" not "Publish", "Mission Brief" not "Description"
 - **No soft shadows** — cards use `border` + `bg-card`, hover uses `bg-accent`, no `shadow-*`
 
-### Category Badge Colors (dark-optimised)
+### Badge Color Maps (in `src/lib/constants.ts`)
 
-```tsx
-const categoryColors = {
-  General:          "border border-sky-500/40 bg-sky-500/10 text-sky-400",
-  "Gear Reviews":   "border border-violet-500/40 bg-violet-500/10 text-violet-400",
-  "Tips & Tactics": "border border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
-  "Buy/Sell":       "border border-amber-500/40 bg-amber-500/10 text-amber-400",
-  Memes:            "border border-pink-500/40 bg-pink-500/10 text-pink-400",
-  News:             "border border-primary/40 bg-primary/10 text-primary",
-}
+All badge color maps are centralized in `src/lib/constants.ts`. Never define color maps inline in components — always import from `@/lib/constants`.
+
+```ts
+CATEGORY_COLORS     // Forum post categories
+CONDITION_COLORS    // Marketplace item conditions
+LISTING_STATUS_COLORS
+GAME_TYPE_COLORS
+EVENT_STATUS_COLORS
+POLL_STATUS_COLORS
+FALLBACK_BADGE      // Fallback when no match found
 ```
 
-### Condition / Status Badge Colors (marketplace)
-
+Pattern for usage:
 ```tsx
-const conditionColors = {
-  "New":       "border border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
-  "Like New":  "border border-sky-500/40 bg-sky-500/10 text-sky-400",
-  "Used":      "border border-amber-500/40 bg-amber-500/10 text-amber-400",
-  "For Parts": "border border-primary/40 bg-primary/10 text-primary",
-}
+import { CATEGORY_COLORS, FALLBACK_BADGE } from "@/lib/constants"
+const colorClass = CATEGORY_COLORS[category] ?? FALLBACK_BADGE
+<Badge className={colorClass}>{category}</Badge>
 ```
 
 ### Shared Prose Classes
 
-Markdown-rendered content (forum post body, editor preview) uses `PROSE_CLASSES` from `src/lib/prose.ts`. Import and apply this constant to any element rendering markdown. Never duplicate the class string inline.
+Markdown-rendered content uses `PROSE_CLASSES` from `src/lib/prose.ts`. Import and apply this constant to any element rendering markdown. Never duplicate the class string inline.
 
 ```tsx
 import { PROSE_CLASSES } from "@/lib/prose"
@@ -234,63 +390,11 @@ import { PROSE_CLASSES } from "@/lib/prose"
 
 ---
 
-## Coding Conventions
+## Code Comment Policy
 
-### Naming
-- Pages: lowercase `page.tsx` (Next.js convention)
-- Components: PascalCase (`Navbar.tsx`, `CommentThread.tsx`)
-- Utilities / lib files: camelCase (`prose.ts`)
-- Types: PascalCase interfaces (`User`, `GameEvent`, `MarketplaceListing`)
+From `CLAUDE.md`:
 
-### Client vs Server Components
-- Pages are Server Components by default — only add `"use client"` when the component needs hooks, event handlers, or browser APIs
-- Push `"use client"` as far down the tree as possible — interactive islands, not entire pages
-- `(auth)` layout has no navbar/footer — it wraps only login and register
-- `(main)` layout wraps all main site pages
-
-### Mock Data
-All data is currently mocked inline in page files. When the backend is built:
-1. Move fetch logic to `async` Server Component functions at the top of the page
-2. Pass data down as props to client components
-3. Use Server Actions for mutations
-
-### File Size Guidelines
-- Under 200 lines: healthy
-- 200–500 lines: review for splitting opportunities
-- Over 500 lines: should be split
-
-### One Component Per File
-Each file should export one primary component. Internal helper components (not exported) are acceptable in the same file.
-
----
-
-## Planned Backend Schema (Prisma — not yet implemented)
-
-See `PLANNING.md` at the project root for the full Prisma schema covering:
-- User, Account, Session (NextAuth)
-- Group, GroupMembership
-- Post, Comment, Vote
-- MarketplaceListing, SellerReview
-- GameEvent, RSVP
-- Notification
-
-When implementing:
-- Use Prisma Client via a singleton in `src/lib/prisma.ts`
-- Use Server Actions in `src/lib/actions/` for all mutations
-- Validate all inputs with Zod before any Prisma operation
-- Never expose raw Prisma errors to the client
-
----
-
-## Key Files Quick Reference
-
-| File | Purpose |
-|---|---|
-| `src/app/globals.css` | Tailwind v4 config, CSS variables, dark/light theme, utility classes |
-| `src/app/layout.tsx` | Root layout — fonts, `class="dark"`, metadata |
-| `src/app/(main)/layout.tsx` | Main layout — Navbar + Footer |
-| `src/components/layout/Navbar.tsx` | Sticky nav, mobile sheet, auth state placeholder |
-| `src/lib/prose.ts` | `PROSE_CLASSES` constant for markdown rendering |
-| `src/types/index.ts` | Shared TypeScript types for mock data |
-| `PLANNING.md` | Full feature list, phase plan, Prisma schema, URL structure |
-
+- Never write obvious comments that describe what easily readable code does
+- Only add comments when they provide additional context not apparent from the code
+- Comments explain *why*, not *what*, when the *what* is self-evident
+- No decorative separator comments (e.g., `// ===== HANDLERS =====`)

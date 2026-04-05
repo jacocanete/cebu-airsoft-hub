@@ -30,10 +30,20 @@ model User {
   listings        MarketplaceListing[]
   rsvps           RSVP[]
   memberships     GroupMembership[]
-  eventsCreated   GameEvent[]
+  eventsCreated   GameEvent[]    @relation("organizer")
   reviewsGiven    SellerReview[] @relation("ReviewerRelation")
   reviewsReceived SellerReview[] @relation("SellerRelation")
   notifications   Notification[]
+  postsRemoved     Post[]          @relation("PostsRemovedBy")
+  commentsRemoved  Comment[]       @relation("CommentsRemovedBy")
+  reportsSubmitted Report[]        @relation("ReportsSubmitted")
+  reportsResolved  Report[]        @relation("ReportsResolved")
+  auditLogActions  AuditLogEntry[] @relation("AuditLogActions")
+  bans             Ban[]           @relation("UserBans")
+  bansIssued       Ban[]           @relation("BansIssued")
+  bansLifted       Ban[]           @relation("BansLifted")
+  modNotesAbout    ModNote[]       @relation("NotesAbout")
+  modNotesAuthored ModNote[]       @relation("NotesAuthored")
 
   // Better Auth
   sessions Session[]
@@ -95,11 +105,20 @@ model Post {
   category  String
   tags      String[]
   pinned    Boolean  @default(false)
+  locked    Boolean  @default(false)
   authorId  String
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   poll      Poll?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Soft-delete fields — set by mod actions, never actually removed from DB.
+  // deletedByAuthor=true means the author removed their own post.
+  deletedAt      DateTime?
+  deletedById    String?
+  deletedBy      User?     @relation("PostsRemovedBy", fields: [deletedById], references: [id])
+  deletionReason String?
+  deletedByAuthor Boolean  @default(false)
 
   comments Comment[]
   votes    Vote[]
@@ -116,6 +135,13 @@ model Comment {
   parent          Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id])
   replies         Comment[] @relation("CommentReplies")
   createdAt       DateTime  @default(now())
+
+  // Soft-delete fields
+  deletedAt       DateTime?
+  deletedById     String?
+  deletedBy       User?     @relation("CommentsRemovedBy", fields: [deletedById], references: [id])
+  deletionReason  String?
+  deletedByAuthor Boolean   @default(false)
 }
 
 model Vote {
@@ -227,8 +253,8 @@ model GameEvent {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  organizer Group?     @relation(fields: [groupId], references: [id])
-  org       User       @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  group     Group?     @relation("group", fields: [groupId], references: [id])
+  organizer User       @relation("organizer", fields: [organizerId], references: [id], onDelete: Cascade)
   rsvps     RSVP[]
 }
 
@@ -268,7 +294,7 @@ model Group {
   createdAt   DateTime @default(now())
 
   members GroupMembership[]
-  events  GameEvent[]
+  events  GameEvent[]        @relation("group")
 }
 
 model GroupMembership {
@@ -286,6 +312,123 @@ enum GroupRole {
   MEMBER
   ADMIN
   OWNER
+}
+
+// Bans & mod notes
+
+model Ban {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation("UserBans", fields: [userId], references: [id], onDelete: Cascade)
+  bannedById String
+  bannedBy   User      @relation("BansIssued", fields: [bannedById], references: [id])
+  reason     String
+  expiresAt  DateTime?
+  liftedAt   DateTime?
+  liftedById String?
+  liftedBy   User?     @relation("BansLifted", fields: [liftedById], references: [id])
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model ModNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("NotesAbout", fields: [userId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation("NotesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Moderation
+
+enum ModerationTarget {
+  POST
+  COMMENT
+  LISTING
+  USER
+  EVENT
+  GROUP
+}
+
+enum ReportCategory {
+  SPAM
+  HARASSMENT
+  HATE_SPEECH
+  NSFW
+  MISINFORMATION
+  OFF_TOPIC
+  CHEATING_ACCUSATION_WITHOUT_PROOF
+  DOXXING
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED_ACTIONED
+  RESOLVED_DISMISSED
+}
+
+enum AuditAction {
+  POST_REMOVED
+  POST_RESTORED
+  POST_PINNED
+  POST_UNPINNED
+  POST_LOCKED
+  POST_UNLOCKED
+  COMMENT_REMOVED
+  COMMENT_RESTORED
+  LISTING_REMOVED
+  LISTING_RESTORED
+  EVENT_CANCELLED
+  GROUP_REMOVED
+  USER_BANNED
+  USER_UNBANNED
+  USER_ROLE_CHANGED
+  REPORT_DISMISSED
+  REPORT_RESOLVED
+}
+
+// Polymorphic report — one model covers all reportable target types
+model Report {
+  id             String         @id @default(cuid())
+  reporterId     String
+  reporter       User           @relation("ReportsSubmitted", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType     ModerationTarget
+  targetId       String
+  category       ReportCategory
+  reason         String?
+  status         ReportStatus   @default(OPEN)
+  resolvedById   String?
+  resolvedBy     User?          @relation("ReportsResolved", fields: [resolvedById], references: [id])
+  resolvedAt     DateTime?
+  resolutionNote String?
+  createdAt      DateTime       @default(now())
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+// Append-only audit trail for all mod actions
+model AuditLogEntry {
+  id         String           @id @default(cuid())
+  actorId    String
+  actor      User             @relation("AuditLogActions", fields: [actorId], references: [id], onDelete: Cascade)
+  action     AuditAction
+  targetType ModerationTarget
+  targetId   String
+  reason     String?
+  metadata   Json?
+  public     Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([targetType, targetId])
 }
 
 // Notifications

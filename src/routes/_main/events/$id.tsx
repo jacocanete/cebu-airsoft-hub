@@ -5,8 +5,6 @@ import {
   MapPin,
   DollarSign,
   Users,
-  Shield,
-  Share2,
   Flag,
 } from "lucide-react";
 import { GAME_TYPE_COLORS, EVENT_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
@@ -14,6 +12,8 @@ import { BackLink } from "@/components/shared/back-link";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
 import { useEventDetail, useRsvp } from "@/hooks/use-events";
+import { useRequireAuth } from "@/hooks/use-require-auth";
+import { ShareButton } from "@/components/shared/share-button";
 
 export const Route = createFileRoute("/_main/events/$id")({
   head: () => ({
@@ -26,6 +26,7 @@ function EventDetailPage() {
   const { id } = Route.useParams();
   const { data: event, isLoading } = useEventDetail(id);
   const rsvp = useRsvp();
+  const requireAuth = useRequireAuth();
 
   if (isLoading || !event) {
     return (
@@ -39,8 +40,7 @@ function EventDetailPage() {
   const rsvpPercent =
     playerCap > 0 ? Math.round((event.rsvpCount / playerCap) * 100) : 0;
 
-  const participants: Array<{ name: string; username: string; team?: string }> =
-    Array.isArray(event.rsvps) ? event.rsvps : [];
+  const participants = Array.isArray(event.rsvps) ? event.rsvps.map((r) => r.user) : [];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -108,10 +108,7 @@ function EventDetailPage() {
             </div>
 
             <div className="flex items-center gap-2 pt-4 mt-4 border-t border-border flex-wrap">
-              <button className="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 label-military text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
-                <Share2 className="h-3.5 w-3.5" />
-                Share
-              </button>
+              <ShareButton />
               <button className="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 label-military text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                 <Flag className="h-3.5 w-3.5" />
                 Report
@@ -141,12 +138,7 @@ function EventDetailPage() {
                     <span className="text-sm font-semibold text-foreground truncate">
                       {participant.name}
                     </span>
-                    {participant.team && (
-                      <span className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary shrink-0">
-                        <Shield className="h-2.5 w-2.5" />
-                        {participant.team}
-                      </span>
-                    )}
+
                   </div>
                 </Link>
               ))}
@@ -176,7 +168,7 @@ function EventDetailPage() {
               </div>
             )}
             <button
-              onClick={() => rsvp.mutate({ eventId: id, status: "GOING" })}
+              onClick={() => requireAuth(() => rsvp.mutate({ eventId: id, status: "GOING" }))}
               disabled={rsvp.isPending}
               className="w-full rounded bg-primary px-3 py-2.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85 glow-red disabled:opacity-60"
             >

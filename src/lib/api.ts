@@ -13,13 +13,16 @@ class ApiError extends Error {
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: {
+      ...(options?.body !== undefined && { "Content-Type": "application/json" }),
+      ...options?.headers,
+    },
     ...options,
   });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw new ApiError(res.status, body.error ?? res.statusText);
+    throw new ApiError(res.status, body.error ?? body.message ?? res.statusText);
   }
 
   return res.json() as Promise<T>;
@@ -31,7 +34,11 @@ export const api = {
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  delete: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: "DELETE",
+      ...(body !== undefined && { body: JSON.stringify(body) }),
+    }),
 };
 
 export { ApiError };

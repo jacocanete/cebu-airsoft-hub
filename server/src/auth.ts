@@ -18,6 +18,14 @@ export const auth = betterAuth({
         required: true,
         unique: true,
       },
+      // Site-wide role. Never writable by the user — set via the CLI grant-role
+      // script or the ADMIN role-change endpoint.
+      role: {
+        type: "string",
+        required: false,
+        defaultValue: "USER",
+        input: false,
+      },
     },
   },
 });

@@ -1,7 +1,13 @@
-import express from "express";
+import { config } from "dotenv";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../.env") });
+
+import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { registerSocketHandlers } from "./socket/index.js";
 import authRoutes from "./routes/auth.js";
@@ -11,6 +17,10 @@ import eventsRoutes from "./routes/events.js";
 import marketplaceRoutes from "./routes/marketplace.js";
 import groupsRoutes from "./routes/groups.js";
 import usersRoutes from "./routes/users.js";
+import pollsRoutes from "./routes/polls.js";
+import reportsRoutes from "./routes/reports.js";
+import auditRoutes from "./routes/audit.js";
+import notificationsRoutes from "./routes/notifications.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -23,6 +33,8 @@ const io = new Server(httpServer, {
     credentials: true,
   },
 });
+
+app.set("io", io);
 
 app.use(
   cors({
@@ -43,15 +55,33 @@ app.use("/api/events", eventsRoutes);
 app.use("/api/listings", marketplaceRoutes);
 app.use("/api/groups", groupsRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/posts", pollsRoutes);
+app.use("/api/reports", reportsRoutes);
+app.use("/api/audit", auditRoutes);
+app.use("/api/notifications", notificationsRoutes);
+
+app.use((_req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+    res.status(409).json({ error: "Already exists" });
+    return;
+  }
+  console.error(err);
+  res.status(500).json({ error: "Internal server error" });
+});
 
 registerSocketHandlers(io);
 
 const port = Number(process.env.PORT ?? 3001);
 
-httpServer.listen(port, async () => {
+async function start() {
   await prisma.$connect();
-  console.log(`API running on http://localhost:${port}`);
-});
+  httpServer.listen(port, () => {
+    console.log(`API running on http://localhost:${port}`);
+  });
+}
 
-// Export io so route handlers can broadcast
-export { io };
+start().catch(console.error);

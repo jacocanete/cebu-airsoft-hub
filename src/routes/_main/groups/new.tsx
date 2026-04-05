@@ -1,7 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_main/groups/new")({
   head: () => ({ meta: [{ title: "Register a Group | Detachment Reaper" }] }),
+  beforeLoad: ({ context, location }) => {
+    if (!context.session?.user) {
+      throw redirect({
+        to: "/login",
+        search: { redirect: location.href },
+      });
+    }
+  },
   component: NewGroupPage,
 });
 

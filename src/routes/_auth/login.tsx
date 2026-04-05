@@ -8,11 +8,15 @@ export const Route = createFileRoute("/_auth/login")({
   head: () => ({
     meta: [{ title: "Login | Detachment Reaper" }],
   }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: (search.redirect as string) || "",
+  }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { redirect } = Route.useSearch();
   const login = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +25,15 @@ function LoginPage() {
     e.preventDefault();
     login.mutate(
       { email, password },
-      { onSuccess: () => navigate({ to: "/feed" }) },
+      {
+        onSuccess: () => {
+          if (redirect) {
+            window.location.href = redirect;
+          } else {
+            navigate({ to: "/feed" });
+          }
+        },
+      },
     );
   }
 

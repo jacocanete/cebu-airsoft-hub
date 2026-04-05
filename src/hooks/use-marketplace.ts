@@ -10,15 +10,16 @@ interface ListingFilters {
 }
 
 export function useListings(filters?: ListingFilters) {
-  const params = new URLSearchParams();
-  if (filters?.condition) params.set("condition", filters.condition);
-  if (filters?.category) params.set("category", filters.category);
-  if (filters?.q) params.set("q", filters.q);
-  if (filters?.status) params.set("status", filters.status);
-
   return useQuery<MarketplaceListing[]>({
-    queryKey: ["listings", filters],
-    queryFn: () => api.get(`/api/listings${params.size ? `?${params}` : ""}`),
+    queryKey: ["listings", filters?.condition ?? null, filters?.category ?? null, filters?.q ?? null, filters?.status ?? null],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filters?.condition) params.set("condition", filters.condition);
+      if (filters?.category) params.set("category", filters.category);
+      if (filters?.q) params.set("q", filters.q);
+      if (filters?.status) params.set("status", filters.status);
+      return api.get(`/api/listings${params.size ? `?${params}` : ""}`);
+    },
     staleTime: 60 * 1000,
   });
 }

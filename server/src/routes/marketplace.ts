@@ -26,7 +26,7 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   const listing = await prisma.marketplaceListing.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       seller: { select: { id: true, username: true, name: true } },
     },
@@ -70,12 +70,18 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
 });
 
 router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
-  const { status } = z
+  const parsed = z
     .object({ status: z.enum(["AVAILABLE", "RESERVED", "SOLD"]) })
-    .parse(req.body);
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const { status } = parsed.data;
+  const id = req.params.id as string;
 
   const listing = await prisma.marketplaceListing.findUnique({
-    where: { id: req.params.id },
+    where: { id },
   });
 
   if (!listing || listing.sellerId !== req.user!.id) {
@@ -84,7 +90,7 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
   }
 
   const updated = await prisma.marketplaceListing.update({
-    where: { id: req.params.id },
+    where: { id },
     data: { status },
   });
 

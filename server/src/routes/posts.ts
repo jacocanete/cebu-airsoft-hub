@@ -4,10 +4,27 @@ import { prisma } from "../prisma.js";
 import {
   requireAuth,
   optionalAuth,
+  requireRole,
+  isMod,
   type AuthRequest,
 } from "../middleware/auth.js";
+import { logAudit } from "../lib/audit.js";
+import { FORUM_CATEGORIES } from "../lib/constants.js";
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+// Reddit-style hot ranking: log(votes) + time_bias
+// Every ~12.5 hours of age adds +1, equivalent to gaining 10x more net votes
+function hotScore(netVotes: number, createdAt: Date): number {
+  const order = Math.log10(Math.max(Math.abs(netVotes), 1));
+  const sign = netVotes > 0 ? 1 : netVotes < 0 ? -1 : 0;
+  const seconds = createdAt.getTime() / 1000 - 1134028003;
+  return sign * order + seconds / 45000;
+}
 
 const postSelect = {
   id: true,
@@ -15,11 +32,54 @@ const postSelect = {
   category: true,
   tags: true,
   pinned: true,
+  locked: true,
   createdAt: true,
+  deletedAt: true,
+  deletedByAuthor: true,
+  deletionReason: true,
+  deletedBy: { select: { username: true } },
   author: { select: { id: true, username: true, name: true } },
-  _count: { select: { comments: true, votes: true } },
-  votes: { select: { value: true } },
+  _count: { select: { comments: true } },
+  votes: { select: { userId: true, value: true } },
 };
+
+// Sanitize a post for the feed list: aggregate votes, expose soft-delete fields
+function sanitizePost(
+  post: {
+    id: string;
+    title: string;
+    category: string;
+    tags: string[];
+    pinned: boolean;
+    locked: boolean;
+    createdAt: Date;
+    deletedAt: Date | null;
+    deletedByAuthor: boolean;
+    deletionReason: string | null;
+    deletedBy: { username: string } | null;
+    author: { id: string; username: string; name: string };
+    votes: { userId: string; value: number }[];
+    _count: { comments: number };
+  },
+  userId?: string,
+) {
+  const { votes, _count, ...rest } = post;
+  return {
+    ...rest,
+    upvotes: votes.filter((v) => v.value === 1).length,
+    downvotes: votes.filter((v) => v.value === -1).length,
+    commentCount: _count.comments,
+    userVote: userId ? (votes.find((v) => v.userId === userId)?.value ?? 0) : 0,
+  };
+}
+
+const removePostSchema = z.object({
+  reason: z.string().min(1, "Reason is required").max(500),
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/posts
+// ---------------------------------------------------------------------------
 
 router.get("/", optionalAuth, async (req: AuthRequest, res) => {
   const { category, sort = "hot", q } = req.query as Record<string, string>;
@@ -39,39 +99,53 @@ router.get("/", optionalAuth, async (req: AuthRequest, res) => {
   const posts = await prisma.post.findMany({
     where,
     select: postSelect,
-    orderBy: sort === "new" ? { createdAt: "desc" } : { createdAt: "desc" },
+    orderBy: { createdAt: "desc" },
   });
 
-  const formatted = posts.map((p) => ({
-    ...p,
-    upvotes: p.votes.filter((v) => v.value === 1).length,
-    downvotes: p.votes.filter((v) => v.value === -1).length,
-    commentCount: p._count.comments,
-    userVote: req.user
-      ? (p.votes.find((v) => {
-          // votes don't have userId here, need separate query for user vote
-        })?.value ?? 0)
-      : 0,
-    votes: undefined,
-    _count: undefined,
-  }));
+  const formatted = posts.map((p) => sanitizePost(p, req.user?.id));
+
+  if (sort === "top") {
+    formatted.sort((a, b) => {
+      const diff = (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes);
+      return diff !== 0 ? diff : b.createdAt.getTime() - a.createdAt.getTime();
+    });
+  } else if (sort === "hot") {
+    formatted.sort(
+      (a, b) =>
+        hotScore(b.upvotes - b.downvotes, b.createdAt) -
+        hotScore(a.upvotes - a.downvotes, a.createdAt),
+    );
+  }
 
   res.json(formatted);
 });
 
+// ---------------------------------------------------------------------------
+// GET /api/posts/:id
+// ---------------------------------------------------------------------------
+
 router.get("/:id", optionalAuth, async (req: AuthRequest, res) => {
+  const userId = req.user?.id ?? null;
+
   const post = await prisma.post.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       author: { select: { id: true, username: true, name: true } },
       votes: true,
       poll: {
         include: {
           options: {
-            include: { _count: { select: { votes: true } } },
+            include: {
+              _count: { select: { votes: true } },
+              // Include whether the current user has voted on each option
+              votes: userId
+                ? { where: { userId }, select: { userId: true } }
+                : false,
+            },
           },
         },
       },
+      deletedBy: { select: { username: true } },
       _count: { select: { comments: true } },
     },
   });
@@ -81,14 +155,44 @@ router.get("/:id", optionalAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  res.json(post);
+  // Collect which option IDs the current user voted on, flattened to a simple
+  // string[] on poll.userVotes for easy client consumption.
+  let userVotes: string[] = [];
+  if (userId && post.poll) {
+    for (const option of post.poll.options) {
+      const optionVotes = option.votes as unknown as { userId: string }[];
+      if (Array.isArray(optionVotes) && optionVotes.some((v) => v.userId === userId)) {
+        userVotes.push(option.id);
+      }
+    }
+  }
+
+  const response = post.poll
+    ? { ...post, poll: { ...post.poll, userVotes } }
+    : post;
+
+  res.json(response);
 });
+
+// ---------------------------------------------------------------------------
+// POST /api/posts
+// ---------------------------------------------------------------------------
 
 const createPostSchema = z.object({
   title: z.string().min(1).max(200),
-  content: z.string().min(1),
-  category: z.string().min(1),
-  tags: z.array(z.string()).max(8).default([]),
+  content: z.string().min(1).max(40_000),
+  category: z.enum(FORUM_CATEGORIES),
+  tags: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .max(30)
+        .regex(/^[a-z0-9-]+$/, "Tags must be lowercase alphanumeric with hyphens")
+        .transform((t) => t.trim().toLowerCase().replace(/^#/, "")),
+    )
+    .max(8)
+    .default([]),
   poll: z
     .object({
       question: z.string().min(1),
@@ -143,11 +247,210 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
   res.status(201).json(post);
 });
 
+// ---------------------------------------------------------------------------
+// DELETE /api/posts/:id — soft-delete (author OR mod)
+// ---------------------------------------------------------------------------
+
+router.delete("/:id", requireAuth, async (req: AuthRequest, res) => {
+  const postId = req.params.id as string;
+  const user = req.user!;
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { authorId: true, deletedAt: true },
+  });
+
+  if (!post) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+
+  if (post.deletedAt) {
+    res.status(409).json({ error: "Post already removed" });
+    return;
+  }
+
+  const actingAsMod = isMod(user) && user.id !== post.authorId;
+
+  if (user.id !== post.authorId && !isMod(user)) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  if (actingAsMod) {
+    const parsed = removePostSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        deletedAt: new Date(),
+        deletedById: user.id,
+        deletionReason: parsed.data.reason,
+        deletedByAuthor: false,
+      },
+    });
+    await logAudit({
+      actorId: user.id,
+      action: "POST_REMOVED",
+      targetType: "POST",
+      targetId: postId,
+      reason: parsed.data.reason,
+    });
+  } else {
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        deletedAt: new Date(),
+        deletedByAuthor: true,
+        deletedById: null,
+        deletionReason: null,
+      },
+    });
+  }
+
+  res.status(204).end();
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/posts/:id/restore — mod/admin only
+// ---------------------------------------------------------------------------
+
+router.patch(
+  "/:id/restore",
+  requireAuth,
+  requireRole("MODERATOR", "ADMIN"),
+  async (req: AuthRequest, res) => {
+    const postId = req.params.id as string;
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { deletedAt: true },
+    });
+
+    if (!post) {
+      res.status(404).json({ error: "Post not found" });
+      return;
+    }
+
+    if (!post.deletedAt) {
+      res.status(409).json({ error: "Post is not removed" });
+      return;
+    }
+
+    await prisma.post.update({
+      where: { id: postId },
+      data: {
+        deletedAt: null,
+        deletedById: null,
+        deletionReason: null,
+        deletedByAuthor: false,
+      },
+    });
+
+    await logAudit({
+      actorId: req.user!.id,
+      action: "POST_RESTORED",
+      targetType: "POST",
+      targetId: postId,
+    });
+
+    res.status(204).end();
+  },
+);
+
+// ---------------------------------------------------------------------------
+// PATCH /api/posts/:id/pin — mod/admin only
+// ---------------------------------------------------------------------------
+
+router.patch(
+  "/:id/pin",
+  requireAuth,
+  requireRole("MODERATOR", "ADMIN"),
+  async (req: AuthRequest, res) => {
+    const postId = req.params.id as string;
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { pinned: true },
+    });
+
+    if (!post) {
+      res.status(404).json({ error: "Post not found" });
+      return;
+    }
+
+    const updated = await prisma.post.update({
+      where: { id: postId },
+      data: { pinned: !post.pinned },
+      select: { id: true, pinned: true },
+    });
+
+    await logAudit({
+      actorId: req.user!.id,
+      action: updated.pinned ? "POST_PINNED" : "POST_UNPINNED",
+      targetType: "POST",
+      targetId: postId,
+    });
+
+    res.json(updated);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// PATCH /api/posts/:id/lock — mod/admin only
+// ---------------------------------------------------------------------------
+
+router.patch(
+  "/:id/lock",
+  requireAuth,
+  requireRole("MODERATOR", "ADMIN"),
+  async (req: AuthRequest, res) => {
+    const postId = req.params.id as string;
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { locked: true },
+    });
+
+    if (!post) {
+      res.status(404).json({ error: "Post not found" });
+      return;
+    }
+
+    const updated = await prisma.post.update({
+      where: { id: postId },
+      data: { locked: !post.locked },
+      select: { id: true, locked: true },
+    });
+
+    await logAudit({
+      actorId: req.user!.id,
+      action: updated.locked ? "POST_LOCKED" : "POST_UNLOCKED",
+      targetType: "POST",
+      targetId: postId,
+    });
+
+    res.json(updated);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// POST /api/posts/:id/vote
+// ---------------------------------------------------------------------------
+
 router.post("/:id/vote", requireAuth, async (req: AuthRequest, res) => {
-  const value = z
-    .union([z.literal(1), z.literal(-1), z.literal(0)])
-    .parse(req.body.value);
-  const postId = req.params.id;
+  const parsed = z
+    .object({ value: z.union([z.literal(1), z.literal(-1), z.literal(0)]) })
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const { value } = parsed.data;
+  const postId = req.params.id as string;
   const userId = req.user!.id;
 
   if (value === 0) {
@@ -164,6 +467,8 @@ router.post("/:id/vote", requireAuth, async (req: AuthRequest, res) => {
   const downvotes = await prisma.vote.count({ where: { postId, value: -1 } });
 
   res.json({ upvotes, downvotes, userVote: value });
+
+  req.app.get("io").to(`post:${postId}`).emit("vote:update", { postId, upvotes, downvotes });
 });
 
 export default router;

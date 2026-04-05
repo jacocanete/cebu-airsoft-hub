@@ -4,39 +4,23 @@
 
 import type { Comment } from "@/types";
 
+// Null soft-delete fields for mock comments (real API always returns these)
+const NO_DELETION = {
+  deletedAt: null,
+  deletedByAuthor: false,
+  deletionReason: null,
+  deletedBy: null,
+} as const;
+
 // Users
 
 const MOCK_USERS = {
-  ghost_reaper: {
-    username: "ghost_reaper",
-    name: "Ghost",
-    team: "Detachment Reaper",
-  },
-  tac_pablo: {
-    username: "tac_pablo",
-    name: "Pablo T.",
-    team: "Detachment Reaper",
-  },
-  sniprcebu: {
-    username: "sniprcebu",
-    name: "Sgt. Lim",
-    team: "Cebu Sniper Corps",
-  },
-  cebu_operatr: {
-    username: "cebu_operatr",
-    name: "Marko",
-    team: undefined,
-  },
-  bb_wizard: {
-    username: "bb_wizard",
-    name: "BB Wizard",
-    team: undefined,
-  },
-  nightcrawlr: {
-    username: "nightcrawlr",
-    name: "Night",
-    team: "Alpha Phantom Unit",
-  },
+  ghost_reaper: { id: "u1", username: "ghost_reaper", name: "Ghost" },
+  tac_pablo:    { id: "u2", username: "tac_pablo",    name: "Pablo T." },
+  sniprcebu:    { id: "u3", username: "sniprcebu",    name: "Sgt. Lim" },
+  cebu_operatr: { id: "u4", username: "cebu_operatr", name: "Marko" },
+  bb_wizard:    { id: "u5", username: "bb_wizard",    name: "BB Wizard" },
+  nightcrawlr:  { id: "u6", username: "nightcrawlr",  name: "Night" },
 } as const;
 
 export const MOCK_PROFILE = {
@@ -230,26 +214,29 @@ That's it. Clean bucking + proper adjustment = consistent, flat trajectory.
 export const MOCK_COMMENTS: Comment[] = [
   {
     id: "c1",
+    ...NO_DELETION,
     author: MOCK_USERS.ghost_reaper,
     content:
       "Finally someone wrote this up properly. I see guys at the field still using WD-40 on their buckings and wondering why their accuracy is trash after 3 games.",
-    upvotes: 47,
+    _count: { replies: 2 },
     createdAt: "22h ago",
     replies: [
       {
         id: "c1a",
+        ...NO_DELETION,
         author: MOCK_USERS.sniprcebu,
         content:
           "It's the most common mistake I see. WD-40 eats rubber compounds fast. Silicone only.",
-        upvotes: 29,
+        _count: { replies: 1 },
         createdAt: "21h ago",
         replies: [
           {
             id: "c1a1",
+            ...NO_DELETION,
             author: MOCK_USERS.bb_wizard,
             content:
               "Can confirm. Destroyed two buckings before someone told me. Now I keep a small bottle of silicone oil in my kit bag.",
-            upvotes: 11,
+            _count: { replies: 0 },
             createdAt: "20h ago",
             replies: [],
           },
@@ -257,10 +244,11 @@ export const MOCK_COMMENTS: Comment[] = [
       },
       {
         id: "c1b",
+        ...NO_DELETION,
         author: MOCK_USERS.tac_pablo,
         content:
           "The WD-40 thing is basically a rite of passage lol. Everyone does it once.",
-        upvotes: 18,
+        _count: { replies: 0 },
         createdAt: "19h ago",
         replies: [],
       },
@@ -268,18 +256,20 @@ export const MOCK_COMMENTS: Comment[] = [
   },
   {
     id: "c2",
+    ...NO_DELETION,
     author: MOCK_USERS.cebu_operatr,
     content:
       "What about flat hop and R-hop mods? Worth doing for a stock gun or should I get the basics down first?",
-    upvotes: 14,
+    _count: { replies: 1 },
     createdAt: "20h ago",
     replies: [
       {
         id: "c2a",
+        ...NO_DELETION,
         author: MOCK_USERS.sniprcebu,
         content:
           "Get the basics down first. A clean stock bucking properly adjusted will outperform a badly installed flat hop. Flat hop is a significant upgrade but only if your fundamentals are right.",
-        upvotes: 22,
+        _count: { replies: 0 },
         createdAt: "19h ago",
         replies: [],
       },
@@ -287,27 +277,30 @@ export const MOCK_COMMENTS: Comment[] = [
   },
   {
     id: "c3",
+    ...NO_DELETION,
     author: MOCK_USERS.nightcrawlr,
     content:
       "The table showing common mistakes is gold. Bookmarking this for the new guys in our unit.",
-    upvotes: 9,
+    _count: { replies: 0 },
     createdAt: "18h ago",
     replies: [],
   },
   {
     id: "c4",
+    ...NO_DELETION,
     author: MOCK_USERS.bb_wizard,
     content:
       "Question: do you need to clean the hop-up every time you do a barrel clean, or only when you notice inconsistency?",
-    upvotes: 6,
+    _count: { replies: 1 },
     createdAt: "15h ago",
     replies: [
       {
         id: "c4a",
+        ...NO_DELETION,
         author: MOCK_USERS.sniprcebu,
         content:
           "I do a full clean every ~2000 rounds or whenever I notice my groupings opening up. The barrel you can clean more often since it's quick.",
-        upvotes: 8,
+        _count: { replies: 0 },
         createdAt: "14h ago",
         replies: [],
       },
@@ -468,12 +461,12 @@ export const MOCK_EVENT_DETAIL = {
   rules:
     "• Minimum FPS: 300 (0.20g). Max FPS: 400 AEG / 500 DMR / 550 bolt-action\n• Full face protection required\n• No blind fire\n• Honor hits — no arguing on the field\n• Dead men don't talk\n• Full black or dark loadout only",
   participants: [
-    { id: "1", ...MOCK_USERS.ghost_reaper },
-    { id: "2", ...MOCK_USERS.tac_pablo },
-    { id: "3", ...MOCK_USERS.sniprcebu },
-    { id: "4", ...MOCK_USERS.cebu_operatr },
-    { id: "5", ...MOCK_USERS.bb_wizard },
-    { id: "6", ...MOCK_USERS.nightcrawlr },
+    { ...MOCK_USERS.ghost_reaper },
+    { ...MOCK_USERS.tac_pablo },
+    { ...MOCK_USERS.sniprcebu },
+    { ...MOCK_USERS.cebu_operatr },
+    { ...MOCK_USERS.bb_wizard },
+    { ...MOCK_USERS.nightcrawlr },
   ],
 };
 

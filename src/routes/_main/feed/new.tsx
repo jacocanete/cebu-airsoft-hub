@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { BarChart2, X } from "lucide-react";
+import { toast } from "sonner";
+import { useCreatePost } from "@/hooks/use-posts";
 import { PostEditor } from "@/components/feed/post-editor";
 import { PollBuilder } from "@/components/feed/poll-builder";
 import type { PollDraft } from "@/types";
@@ -12,6 +14,14 @@ export const Route = createFileRoute("/_main/feed/new")({
   head: () => ({
     meta: [{ title: "Create Post | Detachment Reaper" }],
   }),
+  beforeLoad: ({ context, location }) => {
+    if (!context.session?.user) {
+      throw redirect({
+        to: "/login",
+        search: { redirect: location.href },
+      });
+    }
+  },
   component: NewPostPage,
 });
 
@@ -52,7 +62,32 @@ function NewPostPage() {
     });
   };
 
+  const navigate = useNavigate();
+  const createPost = useCreatePost();
+
   const canSubmit = title.trim().length > 0 && body.trim().length > 0 && category;
+
+  function handleSubmit() {
+    createPost.mutate(
+      {
+        title: title.trim(),
+        content: body.trim(),
+        category,
+        tags,
+        ...(poll ? { poll } : {}),
+      },
+      {
+        onSuccess: (data) => {
+          const { id } = data as { id: string };
+          toast.success("Post created");
+          navigate({ to: "/feed/$id", params: { id } });
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to create post");
+        },
+      },
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
@@ -106,7 +141,14 @@ function NewPostPage() {
           <p className="text-xs text-muted-foreground">By posting, you agree to the community rules.</p>
           <div className="flex gap-2">
             <Link to="/feed" className="rounded border border-border px-4 py-2 label-military text-muted-foreground hover:bg-accent transition-colors">Cancel</Link>
-            <button type="button" disabled={!canSubmit} className="rounded bg-primary px-4 py-2 label-military text-primary-foreground hover:bg-primary/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Post</button>
+            <button
+              type="button"
+              disabled={!canSubmit || createPost.isPending}
+              onClick={handleSubmit}
+              className="rounded bg-primary px-4 py-2 label-military text-primary-foreground hover:bg-primary/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {createPost.isPending ? "Posting…" : "Post"}
+            </button>
           </div>
         </div>
       </div>

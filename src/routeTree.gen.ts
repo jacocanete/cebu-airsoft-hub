@@ -13,6 +13,10 @@ import { Route as MainRouteImport } from './routes/_main'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as MainIndexRouteImport } from './routes/_main/index'
 import { Route as MainSettingsRouteImport } from './routes/_main/settings'
+import { Route as MainSearchRouteImport } from './routes/_main/search'
+import { Route as MainNotificationsRouteImport } from './routes/_main/notifications'
+import { Route as MainModlogRouteImport } from './routes/_main/modlog'
+import { Route as MainModRouteImport } from './routes/_main/mod'
 import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as MainMarketplaceIndexRouteImport } from './routes/_main/marketplace/index'
@@ -46,6 +50,26 @@ const MainIndexRoute = MainIndexRouteImport.update({
 const MainSettingsRoute = MainSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => MainRoute,
+} as any)
+const MainSearchRoute = MainSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => MainRoute,
+} as any)
+const MainNotificationsRoute = MainNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => MainRoute,
+} as any)
+const MainModlogRoute = MainModlogRouteImport.update({
+  id: '/modlog',
+  path: '/modlog',
+  getParentRoute: () => MainRoute,
+} as any)
+const MainModRoute = MainModRouteImport.update({
+  id: '/mod',
+  path: '/mod',
   getParentRoute: () => MainRoute,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
@@ -133,6 +157,10 @@ export interface FileRoutesByFullPath {
   '/': typeof MainIndexRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/mod': typeof MainModRoute
+  '/modlog': typeof MainModlogRoute
+  '/notifications': typeof MainNotificationsRoute
+  '/search': typeof MainSearchRoute
   '/settings': typeof MainSettingsRoute
   '/events/$id': typeof MainEventsIdRoute
   '/events/new': typeof MainEventsNewRoute
@@ -153,6 +181,10 @@ export interface FileRoutesByTo {
   '/': typeof MainIndexRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
+  '/mod': typeof MainModRoute
+  '/modlog': typeof MainModlogRoute
+  '/notifications': typeof MainNotificationsRoute
+  '/search': typeof MainSearchRoute
   '/settings': typeof MainSettingsRoute
   '/events/$id': typeof MainEventsIdRoute
   '/events/new': typeof MainEventsNewRoute
@@ -175,6 +207,10 @@ export interface FileRoutesById {
   '/_main': typeof MainRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
+  '/_main/mod': typeof MainModRoute
+  '/_main/modlog': typeof MainModlogRoute
+  '/_main/notifications': typeof MainNotificationsRoute
+  '/_main/search': typeof MainSearchRoute
   '/_main/settings': typeof MainSettingsRoute
   '/_main/': typeof MainIndexRoute
   '/_main/events/$id': typeof MainEventsIdRoute
@@ -198,6 +234,10 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/mod'
+    | '/modlog'
+    | '/notifications'
+    | '/search'
     | '/settings'
     | '/events/$id'
     | '/events/new'
@@ -218,6 +258,10 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/mod'
+    | '/modlog'
+    | '/notifications'
+    | '/search'
     | '/settings'
     | '/events/$id'
     | '/events/new'
@@ -239,6 +283,10 @@ export interface FileRouteTypes {
     | '/_main'
     | '/_auth/login'
     | '/_auth/register'
+    | '/_main/mod'
+    | '/_main/modlog'
+    | '/_main/notifications'
+    | '/_main/search'
     | '/_main/settings'
     | '/_main/'
     | '/_main/events/$id'
@@ -290,6 +338,34 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof MainSettingsRouteImport
+      parentRoute: typeof MainRoute
+    }
+    '/_main/search': {
+      id: '/_main/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof MainSearchRouteImport
+      parentRoute: typeof MainRoute
+    }
+    '/_main/notifications': {
+      id: '/_main/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof MainNotificationsRouteImport
+      parentRoute: typeof MainRoute
+    }
+    '/_main/modlog': {
+      id: '/_main/modlog'
+      path: '/modlog'
+      fullPath: '/modlog'
+      preLoaderRoute: typeof MainModlogRouteImport
+      parentRoute: typeof MainRoute
+    }
+    '/_main/mod': {
+      id: '/_main/mod'
+      path: '/mod'
+      fullPath: '/mod'
+      preLoaderRoute: typeof MainModRouteImport
       parentRoute: typeof MainRoute
     }
     '/_auth/register': {
@@ -420,6 +496,10 @@ const AuthRouteChildren: AuthRouteChildren = {
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface MainRouteChildren {
+  MainModRoute: typeof MainModRoute
+  MainModlogRoute: typeof MainModlogRoute
+  MainNotificationsRoute: typeof MainNotificationsRoute
+  MainSearchRoute: typeof MainSearchRoute
   MainSettingsRoute: typeof MainSettingsRoute
   MainIndexRoute: typeof MainIndexRoute
   MainEventsIdRoute: typeof MainEventsIdRoute
@@ -439,6 +519,10 @@ interface MainRouteChildren {
 }
 
 const MainRouteChildren: MainRouteChildren = {
+  MainModRoute: MainModRoute,
+  MainModlogRoute: MainModlogRoute,
+  MainNotificationsRoute: MainNotificationsRoute,
+  MainSearchRoute: MainSearchRoute,
   MainSettingsRoute: MainSettingsRoute,
   MainIndexRoute: MainIndexRoute,
   MainEventsIdRoute: MainEventsIdRoute,

@@ -1,9 +1,10 @@
 import type { Server, Socket } from "socket.io";
 
 // Rooms: post:{postId}
-// Events emitted: comment:new, comment:reply
+// Inbound events: post:join, post:leave
+// Outbound events: comment:new (emitted from comments route), vote:update (emitted from posts route)
 
-export function registerCommentHandlers(io: Server, socket: Socket) {
+export function registerCommentHandlers(_io: Server, socket: Socket) {
   socket.on("post:join", (postId: string) => {
     socket.join(`post:${postId}`);
   });
@@ -11,13 +12,4 @@ export function registerCommentHandlers(io: Server, socket: Socket) {
   socket.on("post:leave", (postId: string) => {
     socket.leave(`post:${postId}`);
   });
-}
-
-// Called from the comments route after a comment is created
-export function broadcastComment(
-  io: Server,
-  postId: string,
-  comment: unknown,
-) {
-  io.to(`post:${postId}`).emit("comment:new", comment);
 }

@@ -54,9 +54,9 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ─── LIGHT MODE ─────────────────────────────────────────── */
+/* Light mode */
 :root {
-  --background: oklch(0.97 0 0);          /* #f5f5f5 — near-white */
+  --background: oklch(0.97 0 0);          /* #f5f5f5 near-white */
   --foreground: oklch(0.1 0 0);           /* near-black */
   --card: oklch(1 0 0);                   /* white cards */
   --card-foreground: oklch(0.1 0 0);
@@ -90,9 +90,9 @@
   --sidebar-ring: oklch(0.45 0.27 25);
 }
 
-/* ─── DARK MODE (default) ────────────────────────────────── */
+/* Dark mode (default) */
 .dark {
-  --background: oklch(0.08 0 0);          /* ~#0a0a0a — near-black */
+  --background: oklch(0.08 0 0);          /* ~#0a0a0a near-black */
   --foreground: oklch(0.92 0 0);          /* ~#ebebeb */
   --card: oklch(0.12 0 0);               /* ~#141414 */
   --card-foreground: oklch(0.92 0 0);
@@ -137,16 +137,56 @@
   }
 }
 
-/* ─── TACTICAL UTILITY CLASSES ───────────────────────────── */
+/* NProgress navigation bar */
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: var(--primary);
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+}
+
+/* Glowing tip at the leading edge of the bar */
+#nprogress .peg {
+  display: block;
+  position: absolute;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  box-shadow: 0 0 10px var(--primary), 0 0 5px var(--primary);
+  opacity: 1;
+  transform: rotate(3deg) translate(0px, -4px);
+}
+
+/* Vote button pop animation */
+@keyframes vote-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+.animate-vote-pop {
+  animation: vote-pop 200ms ease-out forwards;
+}
+
+
 @layer utilities {
   /* Red glow for accent elements */
   .glow-red {
     box-shadow: 0 0 20px oklch(0.45 0.27 25 / 30%);
   }
-  /* Subtle top red border accent — used on hero sections */
+
+  /* Subtle top red border accent used on hero sections */
   .border-t-accent {
     border-top: 2px solid oklch(0.45 0.27 25);
   }
+
   /* Uppercase tracking for military label style */
   .label-military {
     @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground;

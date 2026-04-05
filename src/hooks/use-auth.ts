@@ -1,23 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  username: string;
-}
-
-interface Session {
-  user: User;
-  session: { id: string };
-}
+import { api, ApiError } from "@/lib/api";
+import type { Session } from "@/types";
 
 export function useCurrentUser() {
   return useQuery<Session | null>({
     queryKey: ["auth", "session"],
-    queryFn: () =>
-      api.get<Session>("/api/auth/get-session").catch(() => null),
+    queryFn: async () => {
+      try {
+        return await api.get<Session>("/api/auth/get-session");
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) return null;
+        throw err;
+      }
+    },
     staleTime: 5 * 60 * 1000,
     retry: false,
   });

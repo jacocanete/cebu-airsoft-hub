@@ -5,8 +5,18 @@ import { requireAuth, type AuthRequest } from "../middleware/auth.js";
 
 const router = Router();
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
+  const { q } = req.query as Record<string, string | undefined>;
+
   const groups = await prisma.group.findMany({
+    where: q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" as const } },
+            { description: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : undefined,
     include: {
       _count: { select: { members: true } },
     },
@@ -70,7 +80,7 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
 });
 
 router.post("/:slug/join", requireAuth, async (req: AuthRequest, res) => {
-  const group = await prisma.group.findUnique({ where: { slug: req.params.slug } });
+  const group = await prisma.group.findUnique({ where: { slug: req.params.slug as string } });
   if (!group) {
     res.status(404).json({ error: "Group not found" });
     return;

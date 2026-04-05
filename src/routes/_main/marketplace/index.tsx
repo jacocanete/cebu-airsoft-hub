@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { MARKETPLACE_CATEGORIES, CONDITIONS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
 import { ListingCard } from "@/components/marketplace/listing-card";
@@ -26,34 +26,23 @@ function MarketplacePage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <PageHeader
-        eyebrow="Buy &amp; Sell"
-        title="Marketplace"
-        description="Trade airsoft gear with fellow Cebu players."
-      />
+      <div className="flex items-center justify-between gap-4">
+        <PageHeader
+          eyebrow="Buy &amp; Sell"
+          title="Marketplace"
+          description="Trade airsoft gear with fellow Cebu players."
+        />
+        <Link
+          to="/marketplace/new"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Sell
+        </Link>
+      </div>
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:gap-8">
         <div className="flex-1 min-w-0">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search listings..."
-                className="h-9 w-full rounded border border-border bg-card pl-9 pr-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                to="/marketplace/new"
-                className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Sell
-              </Link>
-            </div>
-          </div>
 
           {isLoading ? (
             <SkeletonList count={6} height="h-48" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" />

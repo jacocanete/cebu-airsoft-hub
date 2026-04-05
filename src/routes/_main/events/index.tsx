@@ -38,39 +38,40 @@ function EventsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <PageHeader
-        eyebrow="Operations"
-        title="Game Events"
-        description="Find upcoming airsoft games in Cebu. RSVP to lock in your slot."
-      />
+      <div className="flex items-center justify-between gap-4">
+        <PageHeader
+          eyebrow="Operations"
+          title="Game Events"
+          description="Find upcoming airsoft games in Cebu. RSVP to lock in your slot."
+        />
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-0.5">
+            {(["Upcoming", "Past"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
+                  tab === t
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <Link
+            to="/events/new"
+            className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85"
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            Host game
+          </Link>
+        </div>
+      </div>
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:gap-8">
         <div className="flex-1 min-w-0">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-0.5">
-              {(["Upcoming", "Past"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
-                    tab === t
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            <Link
-              to="/events/new"
-              className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85"
-            >
-              <CalendarDays className="h-3.5 w-3.5" />
-              Host game
-            </Link>
-          </div>
 
           {isLoading ? (
             <SkeletonList count={4} height="h-28" className="gap-3" />

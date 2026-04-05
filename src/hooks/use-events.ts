@@ -16,7 +16,8 @@ export function useEventDetail(id: string) {
   const qc = useQueryClient();
 
   useEffect(() => {
-    socket.connect();
+    const wasConnected = socket.connected;
+    if (!wasConnected) socket.connect();
     socket.emit("event:join", id);
 
     function handleRsvpUpdate(payload: { rsvpCount: number }) {
@@ -30,6 +31,7 @@ export function useEventDetail(id: string) {
     return () => {
       socket.emit("event:leave", id);
       socket.off("rsvp:update", handleRsvpUpdate);
+      if (!wasConnected) socket.disconnect();
     };
   }, [id, qc]);
 
@@ -48,6 +50,7 @@ export function useRsvp() {
       api.post(`/api/events/${eventId}/rsvp`, { status }),
     onSuccess: (_data, { eventId }) => {
       qc.invalidateQueries({ queryKey: ["events", eventId] });
+      qc.invalidateQueries({ queryKey: ["events"] });
     },
   });
 }
