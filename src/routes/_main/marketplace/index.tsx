@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, stripSearchParams } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { MARKETPLACE_CATEGORIES, CONDITIONS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
@@ -8,7 +7,19 @@ import { FilterGroup } from "@/components/shared/filter-group";
 import { SkeletonList } from "@/components/shared/skeleton-list";
 import { useListings } from "@/hooks/use-marketplace";
 
+const DEFAULT_MARKETPLACE_SEARCH = {
+  category: "All",
+  condition: "All",
+};
+
 export const Route = createFileRoute("/_main/marketplace/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    category: typeof search.category === "string" ? search.category : "All",
+    condition: typeof search.condition === "string" ? search.condition : "All",
+  }),
+  search: {
+    middlewares: [stripSearchParams(DEFAULT_MARKETPLACE_SEARCH)],
+  },
   head: () => ({
     meta: [{ title: "Marketplace | Detachment Reaper" }],
   }),
@@ -16,13 +27,21 @@ export const Route = createFileRoute("/_main/marketplace/")({
 });
 
 function MarketplacePage() {
-  const [category, setCategory] = useState("All");
-  const [condition, setCondition] = useState("All");
+  const { category, condition } = Route.useSearch();
+  const navigate = Route.useNavigate();
 
   const { data: listings = [], isLoading } = useListings({
     category: category === "All" ? undefined : category,
     condition: condition === "All" ? undefined : condition,
   });
+
+  function handleCategoryChange(next: string) {
+    navigate({ search: (prev) => ({ ...prev, category: next }) });
+  }
+
+  function handleConditionChange(next: string) {
+    navigate({ search: (prev) => ({ ...prev, condition: next }) });
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -60,13 +79,13 @@ function MarketplacePage() {
             label="Categories"
             options={MARKETPLACE_CATEGORIES}
             value={category}
-            onChange={setCategory}
+            onChange={handleCategoryChange}
           />
           <FilterGroup
             label="Condition"
             options={CONDITIONS}
             value={condition}
-            onChange={setCondition}
+            onChange={handleConditionChange}
           />
 
           <div className="border border-border bg-card p-4">

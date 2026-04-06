@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
-  PostListItem,
+  PostsPage,
   MarketplaceListing,
   EventListItem,
   GroupListItem,
@@ -15,9 +15,15 @@ function buildUrl(base: string, q: string): string {
 }
 
 export function useSearchPosts(q: string) {
-  return useQuery<PostListItem[]>({
+  return useInfiniteQuery<PostsPage>({
     queryKey: ["search", "posts", q],
-    queryFn: () => api.get<PostListItem[]>(buildUrl("/api/posts", q)),
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ q, limit: "20" });
+      if (pageParam) params.set("cursor", pageParam as string);
+      return api.get<PostsPage>(`/api/posts?${params}`);
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: q.trim().length > 0,
     staleTime: STALE_TIME,
   });

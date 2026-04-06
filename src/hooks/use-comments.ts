@@ -2,57 +2,57 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { api } from "@/lib/api";
 import { socket } from "@/lib/socket";
+import { applyVote } from "@/lib/vote";
 import type { Comment } from "@/types";
 
-export type CommentSort = "new" | "old";
+export type CommentSort = "best" | "top" | "new" | "old";
 
-export function useComments(postId: string, sort: CommentSort = "new") {
+export function useComments(postId: string, sort: CommentSort = "best") {
   const qc = useQueryClient();
 
   useEffect(() => {
-    function handleNewComment(comment: Comment) {
-      if (comment.parentCommentId) {
-        // Determine which cache contains the parent comment so we can bump
-        // its _count.replies. The server includes parent.parentCommentId on
-        // newly-created comments specifically for this purpose.
-        //
-        // If parent.parentCommentId is null  → parent is top-level → lives in ["comments", postId, sort]
-        // If parent.parentCommentId is a id  → parent is nested    → lives in ["replies", grandparentId]
-        const grandparentId = comment.parent?.parentCommentId ?? null;
+    function handleCommentVoteUpdate(data: {
+      commentId: string;
+      upvotes: number;
+      downvotes: number;
+    }) {
+      const patchVotes = (c: Comment): Comment =>
+        c.id === data.commentId
+          ? { ...c, upvotes: data.upvotes, downvotes: data.downvotes }
+          : c;
 
-        if (grandparentId === null) {
-          // Parent is top-level — its _count.replies lives in the comments list
-          qc.invalidateQueries({ queryKey: ["comments", postId] });
-        } else {
-          // Parent is nested — its _count.replies lives in a replies cache
-          qc.invalidateQueries({ queryKey: ["replies", grandparentId] });
-        }
-
-        // If there's already an active observer for the parent's replies cache
-        // (e.g. someone else already replied and expanded), refresh it too.
-        qc.invalidateQueries({ queryKey: ["replies", comment.parentCommentId] });
-        return;
-      }
-
-      // Top-level comment — prepend or append to the list.
-      qc.setQueryData<Comment[]>(["comments", postId, sort], (prev) => {
-        if (!prev) return [comment];
-        return sort === "new" ? [comment, ...prev] : [...prev, comment];
-      });
-
-      // Invalidate post caches so commentCount reconciles with the server.
-      qc.invalidateQueries({ queryKey: ["posts", postId] });
-      qc.invalidateQueries({ queryKey: ["posts"] });
+      // Don't touch userVote — that reflects the current user's own vote
+      // state and is unaffected by someone else voting.
+      qc.setQueriesData<Comment[]>({ queryKey: ["comments", postId] }, (prev) =>
+        Array.isArray(prev) ? prev.map(patchVotes) : prev,
+      );
+      qc.setQueriesData<Comment[]>({ queryKey: ["replies"] }, (prev) =>
+        Array.isArray(prev) ? prev.map(patchVotes) : prev,
+      );
     }
 
-    socket.on("comment:new", handleNewComment);
-    return () => { socket.off("comment:new", handleNewComment); };
-  }, [postId, sort, qc]);
+    socket.on("comment:vote:update", handleCommentVoteUpdate);
+    return () => {
+      socket.off("comment:vote:update", handleCommentVoteUpdate);
+    };
+  }, [postId, qc]);
 
   return useQuery<Comment[]>({
     queryKey: ["comments", postId, sort],
     queryFn: () => api.get(`/api/posts/${postId}/comments?sort=${sort}`),
     staleTime: 30 * 1000,
+  });
+}
+
+export function useUpdateComment(postId: string, commentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (content: string) =>
+      api.patch<Comment>(`/api/posts/${postId}/comments/${commentId}`, { content }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comments", postId] });
+      qc.invalidateQueries({ queryKey: ["replies"] });
+    },
   });
 }
 
@@ -96,6 +96,68 @@ export function useCreateComment() {
 
       // Refresh the parent's own replies cache (may already have an observer)
       qc.invalidateQueries({ queryKey: ["replies", parentCommentId] });
+    },
+  });
+}
+
+export function useCommentVote() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      postId,
+      commentId,
+      value,
+    }: {
+      postId: string;
+      commentId: string;
+      value: 1 | -1 | 0;
+    }) =>
+      api.post<{ upvotes: number; downvotes: number; userVote: 1 | -1 | 0 }>(
+        `/api/posts/${postId}/comments/${commentId}/vote`,
+        { value },
+      ),
+
+    onMutate: async ({ postId, commentId, value }) => {
+      // Cancel in-flight queries so they don't overwrite the optimistic update
+      await qc.cancelQueries({ queryKey: ["comments", postId] });
+      await qc.cancelQueries({ queryKey: ["replies"] });
+
+      // Snapshot both cache families — a given comment lives in exactly one
+      // of them (top-level in ["comments", postId, sort], nested in ["replies",
+      // parentId]), but we don't know which without walking the cache.
+      const prevComments = qc.getQueriesData<Comment[]>({ queryKey: ["comments", postId] });
+      const prevReplies = qc.getQueriesData<Comment[]>({ queryKey: ["replies"] });
+
+      const patch = (c: Comment): Comment => {
+        if (c.id !== commentId) return c;
+        const { upvotes, downvotes } = applyVote(c.upvotes, c.downvotes, c.userVote, value);
+        return { ...c, upvotes, downvotes, userVote: value };
+      };
+
+      for (const [key, data] of prevComments) {
+        if (Array.isArray(data)) qc.setQueryData<Comment[]>(key, data.map(patch));
+      }
+      for (const [key, data] of prevReplies) {
+        if (Array.isArray(data)) qc.setQueryData<Comment[]>(key, data.map(patch));
+      }
+
+      return { prevComments, prevReplies };
+    },
+
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevComments) {
+        for (const [k, d] of ctx.prevComments) qc.setQueryData(k, d);
+      }
+      if (ctx?.prevReplies) {
+        for (const [k, d] of ctx.prevReplies) qc.setQueryData(k, d);
+      }
+    },
+
+    onSettled: (_data, _err, { postId }) => {
+      // Reconcile with server — the sort order may have changed for "best"/"top"
+      qc.invalidateQueries({ queryKey: ["comments", postId] });
+      qc.invalidateQueries({ queryKey: ["replies"] });
     },
   });
 }

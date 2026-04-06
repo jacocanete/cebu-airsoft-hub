@@ -13,8 +13,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { SearchInput } from "@/components/shared/search-input";
 import { isMod } from "@/lib/roles";
-import { Bell, ShieldAlert } from "lucide-react";
+import { Bell, Mail, ShieldAlert } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-notifications";
+import { useUnreadMessageCount } from "@/hooks/use-messages";
 
 const navLinks = [
   { href: "/feed", label: "Forum" },
@@ -32,6 +33,8 @@ export function Navbar() {
   const user = session?.user ?? null;
   const { data: unreadData } = useUnreadCount();
   const unreadCount = unreadData?.count ?? 0;
+  const { data: unreadMessagesData } = useUnreadMessageCount();
+  const unreadMessageCount = unreadMessagesData?.count ?? 0;
 
   function handleLogout() {
     logout.mutate(undefined, { onSuccess: () => navigate({ to: "/" }) });
@@ -73,18 +76,32 @@ export function Navbar() {
 
         <div className="hidden md:flex items-center gap-2 ml-auto lg:ml-0">
           {user && (
-            <Link
-              to="/notifications"
-              aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
-              className="relative flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            >
-              <Bell className="h-4 w-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </Link>
+            <>
+              <Link
+                to="/messages"
+                aria-label={unreadMessageCount > 0 ? `${unreadMessageCount} unread messages` : "Messages"}
+                className="relative flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Mail className="h-4 w-4" />
+                {unreadMessageCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                    {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                  </span>
+                )}
+              </Link>
+              <Link
+                to="/notifications"
+                aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+                className="relative flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </Link>
+            </>
           )}
           {user ? (
             <DropdownMenu>
@@ -220,6 +237,18 @@ export function Navbar() {
                         className="rounded border border-border px-3 py-2 text-center text-xs font-semibold uppercase tracking-widest transition-colors hover:bg-accent"
                       >
                         My Profile
+                      </Link>
+                      <Link
+                        to="/messages"
+                        onClick={() => setMobileOpen(false)}
+                        className="relative rounded border border-border px-3 py-2 text-center text-xs font-semibold uppercase tracking-widest transition-colors hover:bg-accent"
+                      >
+                        Messages
+                        {unreadMessageCount > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                            {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                          </span>
+                        )}
                       </Link>
                       <Link
                         to="/settings"

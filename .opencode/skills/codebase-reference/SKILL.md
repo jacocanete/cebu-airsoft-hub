@@ -138,18 +138,23 @@ Socket.io is for real-time invalidation and live updates only — it is NOT the 
 export function useComments(postId: string) {
   const qc = useQueryClient()
 
-  // useEffect for Socket.io room join/leave is LEGITIMATE here — it's side-effect setup
+  // useEffect for Socket.io listeners is LEGITIMATE here — it's side-effect setup
   useEffect(() => {
-    socket.connect()
-    socket.emit("post:join", postId)
-
-    socket.on("comment:new", (comment) => {
-      qc.setQueryData(["comments", postId], (prev: Comment[]) => [...prev, comment])
+    socket.on("comment:vote:update", (data) => {
+      const patch = (c: Comment) =>
+        c.id === data.commentId
+          ? { ...c, upvotes: data.upvotes, downvotes: data.downvotes }
+          : c
+      qc.setQueriesData<Comment[]>({ queryKey: ["comments", postId] }, (prev) =>
+        Array.isArray(prev) ? prev.map(patch) : prev,
+      )
+      qc.setQueriesData<Comment[]>({ queryKey: ["replies"] }, (prev) =>
+        Array.isArray(prev) ? prev.map(patch) : prev,
+      )
     })
 
     return () => {
-      socket.emit("post:leave", postId)
-      socket.off("comment:new")
+      socket.off("comment:vote:update")
     }
   }, [postId, qc])
 
@@ -161,7 +166,7 @@ export function useComments(postId: string) {
 ```
 
 Socket.io rooms used in this project:
-- `post:{postId}` — live comment updates
+- `post:{postId}` — live vote updates (post + comment/reply) and post edit/delete/restore broadcasts
 - `event:{eventId}` — live RSVP count updates
 - `user:{userId}` — notifications (auto-joined on auth)
 

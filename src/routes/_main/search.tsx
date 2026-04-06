@@ -1,3 +1,4 @@
+import { useEffect, useRef, useMemo } from "react";
 import { createFileRoute, Link, stripSearchParams } from "@tanstack/react-router";
 import {
   MessageSquare,
@@ -27,6 +28,7 @@ import type {
   EventListItem,
   GroupListItem,
   UserListItem,
+  PostListItem,
 } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -165,16 +167,35 @@ function SearchResults({ q, type }: { q: string; type: SearchType }) {
 // ---------------------------------------------------------------------------
 
 function ForumResults({ q }: { q: string }) {
-  const { data: posts = [], isLoading } = useSearchPosts(q);
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useSearchPosts(q);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  if (isLoading) return <SkeletonList count={5} height="h-20" />;
+  const posts = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data],
+  );
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNextPage || isFetchingNextPage) return;
+    const obs = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) fetchNextPage(); },
+      { rootMargin: "400px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  if (isLoading) return <SkeletonList count={5} height="h-32" />;
   if (!posts.length) return <NoResults q={q} domain="Forum" />;
 
   return (
     <div className="flex flex-col gap-1.5">
-      {posts.map((post) => (
+      {posts.map((post: PostListItem) => (
         <PostCard key={post.id} post={post} />
       ))}
+      <div ref={sentinelRef} className="h-px" />
+      {isFetchingNextPage && <SkeletonList count={2} height="h-32" />}
     </div>
   );
 }

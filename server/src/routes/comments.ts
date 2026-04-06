@@ -1,7 +1,13 @@
 import { Router, type Request } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
-import { requireAuth, requireRole, isMod, type AuthRequest } from "../middleware/auth.js";
+import {
+  requireAuth,
+  requireRole,
+  optionalAuth,
+  isMod,
+  type AuthRequest,
+} from "../middleware/auth.js";
 import { logAudit } from "../lib/audit.js";
 import { notify } from "../lib/notify.js";
 
@@ -13,13 +19,54 @@ const commentSelect = {
   id: true,
   content: true,
   createdAt: true,
+  editedAt: true,
   deletedAt: true,
   deletedByAuthor: true,
   deletionReason: true,
   deletedBy: { select: { username: true } },
   author: { select: { id: true, username: true, name: true } },
   _count: { select: { replies: true } },
+  votes: { select: { userId: true, value: true } },
 };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function wilsonScore(up: number, down: number): number {
+  const n = up + down;
+  if (n === 0) return 0;
+  const z = 1.96; // 95% confidence
+  const p = up / n;
+  return (
+    (p + (z * z) / (2 * n) - z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n)) /
+    (1 + (z * z) / n)
+  );
+}
+
+type RawComment = {
+  id: string;
+  content: string;
+  createdAt: Date;
+  editedAt: Date | null;
+  deletedAt: Date | null;
+  deletedByAuthor: boolean;
+  deletionReason: string | null;
+  deletedBy: { username: string } | null;
+  author: { id: string; username: string; name: string };
+  _count: { replies: number };
+  votes: { userId: string; value: number }[];
+  parentCommentId?: string | null;
+  parent?: { parentCommentId: string | null } | null;
+};
+
+function sanitizeComment(comment: RawComment, userId?: string) {
+  const { votes, ...rest } = comment;
+  const upvotes = votes.filter((v) => v.value === 1).length;
+  const downvotes = votes.filter((v) => v.value === -1).length;
+  const userVote = (votes.find((v) => v.userId === userId)?.value ?? 0) as 1 | -1 | 0;
+  return { ...rest, upvotes, downvotes, userVote };
+}
 
 const removeCommentSchema = z.object({
   reason: z.string().min(1, "Reason is required").max(500),
@@ -29,17 +76,26 @@ const removeCommentSchema = z.object({
 // GET /api/posts/:postId/comments
 // ---------------------------------------------------------------------------
 
-router.get("/", async (req: Request<CommentParams>, res) => {
-  const { sort = "new" } = req.query as Record<string, string>;
-  const orderBy = sort === "old"
-    ? ({ createdAt: "asc" } as const)
-    : ({ createdAt: "desc" } as const);
+router.get("/", optionalAuth, async (req: AuthRequest & Request<CommentParams>, res) => {
+  const { sort = "best" } = req.query as Record<string, string>;
 
-  const comments = await prisma.comment.findMany({
+  const raw = await prisma.comment.findMany({
     where: { postId: req.params.postId, parentCommentId: null },
     select: commentSelect,
-    orderBy,
   });
+
+  const comments = raw.map((c) => sanitizeComment(c, req.user?.id));
+
+  if (sort === "old") {
+    comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  } else if (sort === "new") {
+    comments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } else if (sort === "top") {
+    comments.sort((a, b) => (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes));
+  } else {
+    // "best" (default) — Wilson score confidence sort
+    comments.sort((a, b) => wilsonScore(b.upvotes, b.downvotes) - wilsonScore(a.upvotes, a.downvotes));
+  }
 
   res.json(comments);
 });
@@ -48,14 +104,14 @@ router.get("/", async (req: Request<CommentParams>, res) => {
 // GET /api/posts/:postId/comments/:commentId/replies
 // ---------------------------------------------------------------------------
 
-router.get("/:commentId/replies", async (req: Request<CommentParams>, res) => {
-  const replies = await prisma.comment.findMany({
+router.get("/:commentId/replies", optionalAuth, async (req: AuthRequest & Request<CommentParams>, res) => {
+  const raw = await prisma.comment.findMany({
     where: { parentCommentId: req.params.commentId },
     select: commentSelect,
     orderBy: { createdAt: "asc" },
   });
 
-  res.json(replies);
+  res.json(raw.map((c) => sanitizeComment(c, req.user?.id)));
 });
 
 // ---------------------------------------------------------------------------
@@ -95,7 +151,7 @@ router.post("/", requireAuth, async (req: AuthRequest & Request<CommentParams>, 
     return;
   }
 
-  const comment = await prisma.comment.create({
+  const rawComment = await prisma.comment.create({
     data: {
       content: parsed.data.content,
       postId: req.params.postId,
@@ -111,10 +167,10 @@ router.post("/", requireAuth, async (req: AuthRequest & Request<CommentParams>, 
     },
   });
 
+  const comment = sanitizeComment(rawComment, req.user!.id);
   res.status(201).json(comment);
 
   const io = req.app.get("io");
-  io.to(`post:${req.params.postId}`).emit("comment:new", comment);
 
   // Fire notifications asynchronously — never block the response
   const commenter = req.user!;
@@ -151,6 +207,62 @@ router.post("/", requireAuth, async (req: AuthRequest & Request<CommentParams>, 
       });
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/posts/:postId/comments/:commentId — edit comment (author only)
+// ---------------------------------------------------------------------------
+
+const updateCommentSchema = z.object({
+  content: z.string().min(1).max(10_000),
+});
+
+router.patch("/:commentId", requireAuth, async (req: AuthRequest & Request<CommentParams>, res) => {
+  const { commentId } = req.params;
+  const userId = req.user!.id;
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { authorId: true, deletedAt: true, postId: true },
+  });
+
+  if (!comment) {
+    res.status(404).json({ error: "Comment not found" });
+    return;
+  }
+
+  if (comment.deletedAt) {
+    res.status(403).json({ error: "Cannot edit a removed comment" });
+    return;
+  }
+
+  // Strictly owner-only
+  if (comment.authorId !== userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const parsed = updateCommentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const rawUpdated = await prisma.comment.update({
+    where: { id: commentId },
+    data: {
+      content: parsed.data.content,
+      editedAt: new Date(),
+    },
+    select: {
+      ...commentSelect,
+      parentCommentId: true,
+      parent: { select: { parentCommentId: true } },
+    },
+  });
+
+  const updated = sanitizeComment(rawUpdated, userId);
+  res.json(updated);
 });
 
 // ---------------------------------------------------------------------------
@@ -266,5 +378,59 @@ router.patch(
     res.status(204).end();
   },
 );
+
+// ---------------------------------------------------------------------------
+// POST /api/posts/:postId/comments/:commentId/vote
+// ---------------------------------------------------------------------------
+
+const voteSchema = z.object({
+  value: z.union([z.literal(1), z.literal(-1), z.literal(0)]),
+});
+
+router.post("/:commentId/vote", requireAuth, async (req: AuthRequest & Request<CommentParams>, res) => {
+  const parsed = voteSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const { commentId, postId } = req.params;
+  const userId = req.user!.id;
+  const { value } = parsed.data;
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: { deletedAt: true },
+  });
+
+  if (!comment) {
+    res.status(404).json({ error: "Comment not found" });
+    return;
+  }
+
+  if (comment.deletedAt) {
+    res.status(403).json({ error: "Cannot vote on a removed comment" });
+    return;
+  }
+
+  if (value === 0) {
+    await prisma.commentVote.deleteMany({ where: { userId, commentId } });
+  } else {
+    await prisma.commentVote.upsert({
+      where: { userId_commentId: { userId, commentId } },
+      create: { userId, commentId, value },
+      update: { value },
+    });
+  }
+
+  const upvotes = await prisma.commentVote.count({ where: { commentId, value: 1 } });
+  const downvotes = await prisma.commentVote.count({ where: { commentId, value: -1 } });
+
+  res.json({ upvotes, downvotes, userVote: value });
+
+  req.app.get("io")
+    .to(`post:${postId}`)
+    .emit("comment:vote:update", { commentId, upvotes, downvotes });
+});
 
 export default router;

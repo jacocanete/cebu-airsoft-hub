@@ -7,9 +7,9 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { api, ApiError } from "@/lib/api";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { queryClient } from "@/lib/query-client";
 import { Toaster } from "@/components/ui/sonner";
 import { NavigationProgress } from "@/components/shared/navigation-progress";
 import { AuthModalProvider } from "@/components/auth/auth-modal-provider";
@@ -21,23 +21,7 @@ export interface RouterContext {
   session: Session | null;
 }
 
-const queryClient = new QueryClient({
-  mutationCache: new MutationCache({
-    onError: (error) => {
-      if (error instanceof ApiError && error.status === 401) {
-        toast.error("Authentication required", {
-          description: "Please log in to continue.",
-        });
-        // Redirect to login preserving current path as return URL
-        const redirect = window.location.pathname + window.location.search;
-        window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
-      }
-    },
-  }),
-  defaultOptions: {
-    queries: { staleTime: 30 * 1000, retry: 1 },
-  },
-});
+
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async () => {

@@ -1,1 +1,0 @@
-import{c as e}from"./createLucideIcon-DCJ0jShb.js";const a=[["path",{d:"m18 15-6-6-6 6",key:"153udz"}]],c=e("chevron-up",a);const o=[["path",{d:"M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z",key:"18887p"}]],n=e("message-square",o);export{c as C,n as M};

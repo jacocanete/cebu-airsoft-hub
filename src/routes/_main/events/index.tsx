@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { createFileRoute, Link, stripSearchParams } from "@tanstack/react-router";
 import { CalendarDays, Users } from "lucide-react";
 import { GAME_TYPES } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/page-header";
@@ -8,7 +8,21 @@ import { FilterGroup } from "@/components/shared/filter-group";
 import { SkeletonList } from "@/components/shared/skeleton-list";
 import { useEventsList } from "@/hooks/use-events";
 
+const DEFAULT_EVENTS_SEARCH = {
+  tab: "Upcoming" as "Upcoming" | "Past",
+  gameType: "All",
+};
+
 export const Route = createFileRoute("/_main/events/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: (["Upcoming", "Past"] as const).includes(search.tab as "Upcoming" | "Past")
+      ? (search.tab as "Upcoming" | "Past")
+      : ("Upcoming" as const),
+    gameType: typeof search.gameType === "string" ? search.gameType : "All",
+  }),
+  search: {
+    middlewares: [stripSearchParams(DEFAULT_EVENTS_SEARCH)],
+  },
   head: () => ({
     meta: [{ title: "Events | Detachment Reaper" }],
   }),
@@ -16,8 +30,8 @@ export const Route = createFileRoute("/_main/events/")({
 });
 
 function EventsPage() {
-  const [tab, setTab] = useState<"Upcoming" | "Past">("Upcoming");
-  const [gameType, setGameType] = useState("All");
+  const { tab, gameType } = Route.useSearch();
+  const navigate = Route.useNavigate();
 
   const { data: events = [], isLoading } = useEventsList();
 
@@ -36,6 +50,14 @@ function EventsPage() {
     return { filtered, upcomingCount, totalRsvps };
   }, [events, tab, gameType]);
 
+  function handleTabChange(next: "Upcoming" | "Past") {
+    navigate({ search: (prev) => ({ ...prev, tab: next }) });
+  }
+
+  function handleGameTypeChange(next: string) {
+    navigate({ search: (prev) => ({ ...prev, gameType: next }) });
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <div className="flex items-center justify-between gap-4">
@@ -49,7 +71,7 @@ function EventsPage() {
             {(["Upcoming", "Past"] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => setTab(t)}
+                onClick={() => handleTabChange(t)}
                 className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
                   tab === t
                     ? "bg-primary text-primary-foreground"
@@ -89,7 +111,7 @@ function EventsPage() {
             label="Game Type"
             options={GAME_TYPES}
             value={gameType}
-            onChange={setGameType}
+            onChange={handleGameTypeChange}
           />
 
           <div className="border border-border bg-card p-4">

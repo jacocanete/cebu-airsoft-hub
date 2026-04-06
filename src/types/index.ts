@@ -73,10 +73,14 @@ export type Comment = {
     username: string;
     name: string;
   };
+  upvotes: number;
+  downvotes: number;
+  userVote: 1 | -1 | 0;
   _count: { replies: number };
   replies?: Comment[];
   createdAt: string;
-  // Populated only on newly-created comments (mutation response + socket broadcast).
+  editedAt?: string | null;
+  // Populated only on newly-created/updated comments (mutation response + socket broadcast).
   // Tells the client which replies cache contains this comment's parent so
   // targeted cache invalidation is possible without guessing or cache walking.
   parentCommentId?: string | null;
@@ -175,6 +179,8 @@ export type PostListItem = Pick<
 > &
   SoftDeleteFields & {
     locked: boolean;
+    editedAt: string | null;
+    excerpt: string;
     author: { id: string; username: string; name: string };
     upvotes: number;
     downvotes: number;
@@ -182,9 +188,15 @@ export type PostListItem = Pick<
     userVote: 1 | -1 | 0;
   };
 
+export type PostsPage = {
+  items: PostListItem[];
+  nextCursor: string | null;
+};
+
 export type PostDetail = Post &
   SoftDeleteFields & {
     locked: boolean;
+    editedAt: string | null;
     content: string;
     votes: Array<{ value: number; userId: string }>;
     _count: { comments: number };
@@ -387,4 +399,77 @@ export type UserListItem = {
   bio?: string;
   avatar?: string;
   _count: { posts: number; listings: number };
+};
+
+// Messaging
+
+export type ConversationContext = "POST" | "LISTING" | "EVENT" | "GROUP";
+
+export type MessageEmbed = {
+  type: "post" | "listing" | "event" | "group";
+  title: string;
+  description: string;
+  image?: string;
+  url: string;
+};
+
+export type MessageParticipant = {
+  id: string;
+  name: string;
+  username: string;
+  avatar: string | null;
+};
+
+export type Message = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  sender: MessageParticipant;
+  content: string;
+  embed: MessageEmbed | null;
+  readAt: string | null;
+  deletedAt: string | null;
+  createdAt: string;
+};
+
+export type ConversationListItem = {
+  id: string;
+  subject: string;
+  contextType: ConversationContext | null;
+  contextId: string | null;
+  participant: MessageParticipant;
+  lastMessage: {
+    id: string;
+    content: string;
+    senderId: string;
+    createdAt: string;
+    readAt: string | null;
+  } | null;
+  unreadCount: number;
+  lastMessageAt: string | null;
+};
+
+export type ConversationDetail = {
+  id: string;
+  subject: string;
+  contextType: ConversationContext | null;
+  contextId: string | null;
+  participant: MessageParticipant;
+  lastMessageAt: string | null;
+};
+
+export type ConversationsPage = {
+  conversations: ConversationListItem[];
+  nextCursor: string | null;
+};
+
+export type MessagesPage = {
+  messages: Message[];
+  nextCursor: string | null;
+};
+
+export type BlockedUser = {
+  id: string;
+  createdAt: string;
+  blocked: MessageParticipant;
 };

@@ -1,1 +1,0 @@
-import{j as r}from"./main-DYLDMZgD.js";function o(){return r.jsx("div",{className:"mx-auto max-w-7xl px-4 py-8 sm:px-6",children:r.jsx("div",{className:"border border-border bg-card p-12 text-center",children:r.jsx("p",{className:"label-military text-muted-foreground",children:"Group profile coming soon."})})})}export{o as component};

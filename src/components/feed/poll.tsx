@@ -21,7 +21,9 @@ export function Poll({ poll }: PollProps) {
   const [pendingSelection, setPendingSelection] = useState<string[]>([]);
 
   const showResults = (hasVoted && !isChangingVote) || poll.status === "closed";
-  const activeSelection = isChangingVote ? pendingSelection : poll.userVotes;
+  // Use pendingSelection when the user is actively picking (first-time vote or
+  // change-vote mode). Fall back to poll.userVotes only in read-only results mode.
+  const activeSelection = (!hasVoted || isChangingVote) ? pendingSelection : poll.userVotes;
 
   const totalVotes = poll.options.reduce((sum, o) => sum + o.votes, 0);
   const maxVotes = Math.max(...poll.options.map((o) => o.votes), 1);
@@ -38,7 +40,7 @@ export function Poll({ poll }: PollProps) {
   }
 
   function handleVote() {
-    const selection = isChangingVote ? pendingSelection : pendingSelection;
+    const selection = pendingSelection;
     if (selection.length === 0) return;
 
     requireAuth(() => {

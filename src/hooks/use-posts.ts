@@ -1,43 +1,82 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { socket } from "@/lib/socket";
 import { useCurrentUser } from "@/hooks/use-auth";
-import type { PostListItem, PostDetail, PollDraft } from "@/types";
-
-function applyVote(
-  upvotes: number,
-  downvotes: number,
-  prev: 1 | -1 | 0,
-  next: 1 | -1 | 0,
-): { upvotes: number; downvotes: number } {
-  let u = upvotes;
-  let d = downvotes;
-  // Remove previous vote
-  if (prev === 1) u--;
-  if (prev === -1) d--;
-  // Apply new vote
-  if (next === 1) u++;
-  if (next === -1) d++;
-  return { upvotes: u, downvotes: d };
-}
+import { applyVote } from "@/lib/vote";
+import type { PostListItem, PostDetail, PostsPage, PollDraft } from "@/types";
 
 interface PostFilters {
   category?: string;
   sort?: "hot" | "new" | "top";
   q?: string;
+  tag?: string;
 }
 
-export function usePostsList(filters?: PostFilters) {
-  return useQuery<PostListItem[]>({
-    queryKey: ["posts", filters?.category ?? null, filters?.sort ?? null, filters?.q ?? null],
-    queryFn: () => {
+// ---------------------------------------------------------------------------
+// Cache helpers
+// ---------------------------------------------------------------------------
+
+// Walk all infinite posts caches (feed + search) and apply a patch to a single post.
+function patchPostInAllCaches(
+  qc: QueryClient,
+  postId: string,
+  patch: (p: PostListItem) => PostListItem,
+) {
+  const patchPages = (prev: InfiniteData<PostsPage> | undefined) => {
+    if (!prev) return prev;
+    return {
+      ...prev,
+      pages: prev.pages.map((pg) => ({
+        ...pg,
+        items: pg.items.map((p) => (p.id === postId ? patch(p) : p)),
+      })),
+    };
+  };
+
+  qc.setQueriesData<InfiniteData<PostsPage>>(
+    { queryKey: ["posts", "infinite"], exact: false },
+    patchPages,
+  );
+  qc.setQueriesData<InfiniteData<PostsPage>>(
+    { queryKey: ["search", "posts"], exact: false },
+    patchPages,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Hooks
+// ---------------------------------------------------------------------------
+
+export function usePostsInfinite(filters?: PostFilters) {
+  return useInfiniteQuery<PostsPage>({
+    queryKey: [
+      "posts",
+      "infinite",
+      filters?.category ?? null,
+      filters?.sort ?? null,
+      filters?.q ?? null,
+      filters?.tag ?? null,
+    ],
+    queryFn: ({ pageParam }) => {
       const params = new URLSearchParams();
       if (filters?.category) params.set("category", filters.category);
       if (filters?.sort) params.set("sort", filters.sort);
       if (filters?.q) params.set("q", filters.q);
-      return api.get<PostListItem[]>(`/api/posts${params.size ? `?${params}` : ""}`);
+      if (filters?.tag) params.set("tag", filters.tag);
+      if (pageParam) params.set("cursor", pageParam as string);
+      params.set("limit", "20");
+      return api.get<PostsPage>(`/api/posts?${params}`);
     },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     staleTime: 30 * 1000,
   });
 }
@@ -53,18 +92,22 @@ export function usePostDetail(id: string) {
       // can't patch from aggregate counts, so let React Query refetch it.
       qc.invalidateQueries({ queryKey: ["posts", id] });
 
-      // Patch all list caches directly since they store flat upvotes/downvotes.
-      qc.setQueriesData<PostListItem[]>(
-        { queryKey: ["posts"] },
-        (prev) => {
-          if (!Array.isArray(prev)) return prev;
-          return prev.map((p) =>
-            p.id === data.postId
-              ? { ...p, upvotes: data.upvotes, downvotes: data.downvotes }
-              : p,
-          );
-        },
-      );
+      // Patch all list/search caches directly since they store flat upvotes/downvotes.
+      patchPostInAllCaches(qc, data.postId, (p) => ({
+        ...p,
+        upvotes: data.upvotes,
+        downvotes: data.downvotes,
+      }));
+    }
+
+    function handlePostUpdated(updated: PostDetail) {
+      if (updated.id !== id) return;
+      qc.setQueryData<PostDetail>(["posts", id], (prev) => {
+        if (!prev) return prev;
+        return { ...prev, ...updated };
+      });
+      // Refresh all list caches so title/category/tags changes propagate
+      qc.invalidateQueries({ queryKey: ["posts", "infinite"] });
     }
 
     function handlePollVoteUpdate(data: { pollId: string; options: Array<{ id: string; votes: number }> }) {
@@ -85,9 +128,11 @@ export function usePostDetail(id: string) {
 
     socket.on("vote:update", handleVoteUpdate);
     socket.on("poll:vote:update", handlePollVoteUpdate);
+    socket.on("post:updated", handlePostUpdated);
     return () => {
       socket.off("vote:update", handleVoteUpdate);
       socket.off("poll:vote:update", handlePollVoteUpdate);
+      socket.off("post:updated", handlePostUpdated);
     };
   }, [id, qc]);
 
@@ -105,6 +150,27 @@ export function usePostDetail(id: string) {
   });
 }
 
+export function useUpdatePost(postId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      title: string;
+      content: string;
+      category: string;
+      tags: string[];
+    }) => api.patch<PostDetail>(`/api/posts/${postId}`, data),
+    onSuccess: (updated) => {
+      // Overwrite the detail cache with the server's authoritative response
+      qc.setQueryData<PostDetail>(["posts", postId], (prev) => {
+        if (!prev) return prev;
+        return { ...prev, ...updated };
+      });
+      // Refresh all list caches so edits propagate to the feed
+      qc.invalidateQueries({ queryKey: ["posts", "infinite"] });
+    },
+  });
+}
+
 export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({
@@ -115,7 +181,7 @@ export function useCreatePost() {
       tags: string[];
       poll?: PollDraft;
     }) => api.post("/api/posts", data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["posts", "infinite"] }),
   });
 }
 
@@ -134,11 +200,19 @@ export function useVote() {
     onMutate: async ({ postId, value }) => {
       // Cancel any in-flight refetches so they don't overwrite optimistic update
       await qc.cancelQueries({ queryKey: ["posts", postId] });
-      await qc.cancelQueries({ queryKey: ["posts"] });
+      await qc.cancelQueries({ queryKey: ["posts", "infinite"] });
+      await qc.cancelQueries({ queryKey: ["search", "posts"] });
 
       // Snapshot current state for rollback
       const prevDetail = qc.getQueryData<PostDetail>(["posts", postId]);
-      const prevLists = qc.getQueriesData<PostListItem[]>({ queryKey: ["posts"] });
+      const prevInfinite = qc.getQueriesData<InfiniteData<PostsPage>>({
+        queryKey: ["posts", "infinite"],
+        exact: false,
+      });
+      const prevSearch = qc.getQueriesData<InfiniteData<PostsPage>>({
+        queryKey: ["search", "posts"],
+        exact: false,
+      });
 
       // Optimistically update the detail cache
       if (prevDetail) {
@@ -153,38 +227,36 @@ export function useVote() {
         });
       }
 
-      // Optimistically update every list cache that contains this post
-      for (const [queryKey, listData] of prevLists) {
-        if (!Array.isArray(listData)) continue;
-        qc.setQueryData<PostListItem[]>(
-          queryKey,
-          listData.map((p) => {
-            if (p.id !== postId) return p;
-            const { upvotes, downvotes } = applyVote(p.upvotes, p.downvotes, p.userVote, value);
-            return { ...p, upvotes, downvotes, userVote: value };
-          }),
-        );
-      }
+      // Optimistically update all infinite list caches
+      patchPostInAllCaches(qc, postId, (p) => {
+        const { upvotes, downvotes } = applyVote(p.upvotes, p.downvotes, p.userVote, value);
+        return { ...p, upvotes, downvotes, userVote: value };
+      });
 
-      return { prevDetail, prevLists };
+      return { prevDetail, prevInfinite, prevSearch };
     },
 
     onError: (_err, { postId }, ctx) => {
-      // Roll back on failure
       if (ctx?.prevDetail) {
         qc.setQueryData(["posts", postId], ctx.prevDetail);
       }
-      if (ctx?.prevLists) {
-        for (const [queryKey, data] of ctx.prevLists) {
+      // Restore infinite caches
+      if (ctx?.prevInfinite) {
+        for (const [queryKey, data] of ctx.prevInfinite) {
+          qc.setQueryData(queryKey, data);
+        }
+      }
+      if (ctx?.prevSearch) {
+        for (const [queryKey, data] of ctx.prevSearch) {
           qc.setQueryData(queryKey, data);
         }
       }
     },
 
     onSettled: (_data, _err, { postId }) => {
-      // Always reconcile with server after mutation settles
       qc.invalidateQueries({ queryKey: ["posts", postId] });
-      qc.invalidateQueries({ queryKey: ["posts"] });
+      qc.invalidateQueries({ queryKey: ["posts", "infinite"] });
+      qc.invalidateQueries({ queryKey: ["search", "posts"] });
     },
   });
 }

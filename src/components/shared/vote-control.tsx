@@ -1,31 +1,31 @@
 import { ChevronUp, ChevronDown } from "lucide-react";
-import { useVote } from "@/hooks/use-posts";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import { AnimatedCount } from "@/components/shared/animated-count";
 
 interface VoteControlProps {
-  postId: string;
   upvotes: number;
   downvotes: number;
   userVote: 1 | -1 | 0;
+  onVote: (value: 1 | -1 | 0) => void;
+  isPending?: boolean;
   layout?: "vertical" | "horizontal";
 }
 
 export function VoteControl({
-  postId,
   upvotes,
   downvotes,
   userVote,
+  onVote,
+  isPending = false,
   layout = "vertical",
 }: VoteControlProps) {
-  const vote = useVote();
   const requireAuth = useRequireAuth();
   const score = upvotes - downvotes;
 
   function handleVote(value: 1 | -1) {
     // Toggle: clicking the active vote removes it
     const next: 1 | -1 | 0 = userVote === value ? 0 : value;
-    requireAuth(() => vote.mutate({ postId, value: next }));
+    requireAuth(() => onVote(next));
   }
 
   const scoreColor =
@@ -48,7 +48,7 @@ export function VoteControl({
         }}
         aria-label="Upvote"
         aria-pressed={userVote === 1}
-        disabled={vote.isPending}
+        disabled={isPending}
         className={`rounded p-0.5 transition-colors disabled:cursor-not-allowed ${
           userVote === 1
             ? "text-primary"
@@ -74,7 +74,7 @@ export function VoteControl({
         }}
         aria-label="Downvote"
         aria-pressed={userVote === -1}
-        disabled={vote.isPending}
+        disabled={isPending}
         className={`rounded p-0.5 transition-colors disabled:cursor-not-allowed ${
           userVote === -1
             ? "text-destructive"

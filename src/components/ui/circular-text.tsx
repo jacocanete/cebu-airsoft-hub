@@ -123,7 +123,7 @@ export function CircularText({
 
         return (
           <span
-            key={i}
+            key={`${i}-${letter}`}
             style={{
               position: "absolute",
               left: x,

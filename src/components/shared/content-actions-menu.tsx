@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Trash2, Pin, PinOff, Lock, Unlock, RotateCcw, Flag } from "lucide-react";
+import { MoreHorizontal, Trash2, Pin, PinOff, Lock, Unlock, RotateCcw, Flag, AlertTriangle, Pencil } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,11 +23,16 @@ interface ContentActionsMenuProps {
   /** Whether to show post-only actions (pin, lock) */
   isPost?: boolean;
 
+  onEdit?: () => void;
   onDelete?: () => void;
   onRemove?: (reason: string) => void;
   onRestore?: () => void;
   onPin?: () => void;
   onLock?: () => void;
+  /** Opens the report dialog. Only shown to logged-in non-owners. */
+  onReport?: () => void;
+  /** Whether the current user is logged in — controls Report visibility */
+  isLoggedIn?: boolean;
 
   isPendingRemove?: boolean;
   isPendingDelete?: boolean;
@@ -42,11 +47,14 @@ export function ContentActionsMenu({
   isPinned = false,
   isLocked = false,
   isPost = false,
+  onEdit,
   onDelete,
   onRemove,
   onRestore,
   onPin,
   onLock,
+  onReport,
+  isLoggedIn = false,
   isPendingRemove = false,
   isPendingDelete = false,
   isPendingRestore = false,
@@ -56,7 +64,8 @@ export function ContentActionsMenu({
 
   const showOwnerActions = isOwner && !isRemoved;
   const showModActions = isModerator;
-  const hasActions = showOwnerActions || showModActions;
+  const showReportAction = !isOwner && isLoggedIn && !!onReport;
+  const hasActions = showOwnerActions || showModActions || showReportAction;
 
   if (!hasActions) return null;
 
@@ -74,6 +83,12 @@ export function ContentActionsMenu({
 
         <DropdownMenuContent align="end" className="w-44">
           {/* Owner actions */}
+          {showOwnerActions && onEdit && (
+            <DropdownMenuItem onSelect={onEdit}>
+              <Pencil className="h-3.5 w-3.5 mr-2" />
+              Edit
+            </DropdownMenuItem>
+          )}
           {showOwnerActions && onDelete && (
             <DropdownMenuItem
               onSelect={onDelete}
@@ -145,6 +160,16 @@ export function ContentActionsMenu({
                   )}
                 </DropdownMenuItem>
               )}
+            </>
+          )}
+          {/* Report — shown to logged-in non-owners */}
+          {showReportAction && (
+            <>
+              {(showOwnerActions || showModActions) && <DropdownMenuSeparator />}
+              <DropdownMenuItem onSelect={onReport}>
+                <AlertTriangle className="h-3.5 w-3.5 mr-2" />
+                Report
+              </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>

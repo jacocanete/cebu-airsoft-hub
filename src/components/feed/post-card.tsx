@@ -4,6 +4,7 @@ import { CATEGORY_COLORS, FALLBACK_BADGE } from "@/lib/constants";
 import { VoteControl } from "@/components/shared/vote-control";
 import { ContentActionsMenu } from "@/components/shared/content-actions-menu";
 import { RemovedPlaceholder } from "@/components/shared/removed-placeholder";
+import { UserAvatar } from "@/components/shared/user-avatar";
 import { formatRelativeTime } from "@/lib/format-time";
 import {
   useRemovePost,
@@ -12,6 +13,7 @@ import {
   useLockPost,
   useDeletePost,
 } from "@/hooks/use-moderation";
+import { useVote } from "@/hooks/use-posts";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { isMod, canModerate } from "@/lib/roles";
 import type { SoftDeleteFields } from "@/types";
@@ -19,6 +21,7 @@ import type { SoftDeleteFields } from "@/types";
 interface PostCardProps {
   id: string;
   title: string;
+  excerpt: string;
   category: string;
   tags: readonly string[];
   pinned: boolean;
@@ -27,8 +30,9 @@ interface PostCardProps {
   downvotes: number;
   commentCount: number;
   userVote: 1 | -1 | 0;
-  author: { id: string; username: string };
+  author: { id: string; username: string; name: string };
   createdAt: string;
+  editedAt: string | null;
 }
 
 type PostCardFullProps = PostCardProps & SoftDeleteFields;
@@ -36,6 +40,7 @@ type PostCardFullProps = PostCardProps & SoftDeleteFields;
 export function PostCard({ post }: { post: PostCardFullProps }) {
   const { data: session } = useCurrentUser();
   const user = session?.user ?? null;
+  const vote = useVote();
 
   const removePost = useRemovePost(post.id);
   const restorePost = useRestorePost(post.id);
@@ -55,10 +60,11 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
     >
       <div className="shrink-0 pt-0.5">
         <VoteControl
-          postId={post.id}
           upvotes={post.upvotes}
           downvotes={post.downvotes}
           userVote={post.userVote}
+          onVote={(value) => vote.mutate({ postId: post.id, value })}
+          isPending={vote.isPending}
           layout="vertical"
         />
       </div>
@@ -81,9 +87,15 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
             {post.category}
           </span>
           {!isRemoved && post.tags.map((tag) => (
-            <span key={tag} className="text-xs text-muted-foreground/60">
+            <Link
+              key={tag}
+              to="/feed"
+              search={{ tag, sort: "new", category: "All" }}
+              className="text-xs text-muted-foreground/60 hover:text-primary transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
               #{tag}
-            </span>
+            </Link>
           ))}
         </div>
 
@@ -101,24 +113,39 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
             className="mt-1.5 block"
           />
         ) : (
-          <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-            <Link
-              to="/profile/$username"
-              params={{ username: post.author.username }}
-              className="hover:text-primary transition-colors"
-            >
-              u/{post.author.username}
-            </Link>
-            <span>{formatRelativeTime(post.createdAt)}</span>
-            <Link
-              to="/feed/$id"
-              params={{ id: post.id }}
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              {post.commentCount}
-            </Link>
-          </div>
+          <>
+            {post.excerpt && (
+              <Link to="/feed/$id" params={{ id: post.id }}>
+                <p className="mt-1 text-sm text-muted-foreground/70 line-clamp-2 leading-snug">
+                  {post.excerpt}
+                </p>
+              </Link>
+            )}
+            <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+              <Link
+                to="/profile/$username"
+                params={{ username: post.author.username }}
+                className="flex items-center gap-1.5 hover:text-primary transition-colors"
+              >
+                <UserAvatar name={post.author.name} username={post.author.username} size="xs" />
+                <span>u/{post.author.username}</span>
+              </Link>
+              <span>
+                {formatRelativeTime(post.createdAt)}
+                {post.editedAt && (
+                  <span className="italic ml-1 text-muted-foreground/40">· edited</span>
+                )}
+              </span>
+              <Link
+                to="/feed/$id"
+                params={{ id: post.id }}
+                className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                {post.commentCount}
+              </Link>
+            </div>
+          </>
         )}
       </div>
 

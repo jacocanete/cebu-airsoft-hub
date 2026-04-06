@@ -4,6 +4,7 @@ import { fromNodeHeaders } from "better-auth/node";
 import { registerCommentHandlers } from "./comments.js";
 import { registerEventHandlers } from "./events.js";
 import { registerNotificationHandlers } from "./notifications.js";
+import { registerChatHandlers } from "./chat.js";
 
 export function registerSocketHandlers(io: Server) {
   // Auth middleware for socket connections
@@ -31,6 +32,7 @@ export function registerSocketHandlers(io: Server) {
     registerCommentHandlers(io, socket);
     registerEventHandlers(io, socket);
     registerNotificationHandlers(io, socket);
+    registerChatHandlers(io, socket);
 
     socket.on("disconnect", () => {
       // cleanup handled per-handler

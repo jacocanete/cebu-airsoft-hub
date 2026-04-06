@@ -16,16 +16,17 @@ interface ReportsPage {
 }
 
 export function useReports(filters?: ReportFilters) {
-  const params = new URLSearchParams();
-  if (filters?.status) params.set("status", filters.status);
-  if (filters?.targetType) params.set("targetType", filters.targetType);
-  if (filters?.category) params.set("category", filters.category);
-  if (filters?.cursor) params.set("cursor", filters.cursor);
-  if (filters?.limit) params.set("limit", String(filters.limit));
-
   return useQuery<ReportsPage>({
     queryKey: ["reports", filters],
-    queryFn: () => api.get<ReportsPage>(`/api/reports${params.size ? `?${params}` : ""}`),
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filters?.status) params.set("status", filters.status);
+      if (filters?.targetType) params.set("targetType", filters.targetType);
+      if (filters?.category) params.set("category", filters.category);
+      if (filters?.cursor) params.set("cursor", filters.cursor);
+      if (filters?.limit) params.set("limit", String(filters.limit));
+      return api.get<ReportsPage>(`/api/reports${params.size ? `?${params}` : ""}`);
+    },
     staleTime: 30_000,
   });
 }

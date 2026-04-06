@@ -4,12 +4,15 @@
 
 import type { Comment } from "@/types";
 
-// Null soft-delete fields for mock comments (real API always returns these)
+// Null soft-delete fields + zero vote state for mock comments (real API always returns these)
 const NO_DELETION = {
   deletedAt: null,
   deletedByAuthor: false,
   deletionReason: null,
   deletedBy: null,
+  upvotes: 0,
+  downvotes: 0,
+  userVote: 0 as 0,
 } as const;
 
 // Users

@@ -9,10 +9,10 @@ import {
   Users,
   ShieldBan,
   ShieldCheck,
-  UserCog,
   StickyNote,
   Plus,
 } from "lucide-react";
+import { MessageButton } from "@/components/shared/MessageButton";
 import { toast } from "sonner";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
@@ -21,6 +21,7 @@ import { useCurrentUser } from "@/hooks/use-auth";
 import { useBanUser, useUnbanUser, useChangeRole } from "@/hooks/use-ban";
 import { useModNotes, useAddModNote } from "@/hooks/use-mod-notes";
 import { isMod, isAdmin } from "@/lib/roles";
+import { ROLE_COLORS } from "@/lib/constants";
 import { formatRelativeTime } from "@/lib/format-time";
 import {
   Dialog,
@@ -30,7 +31,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import type { CSSProperties } from "react";
 import type { Role } from "@/types";
+
+const HERO_STYLE: CSSProperties = {
+  background:
+    "linear-gradient(135deg, oklch(0.45 0.27 25 / 30%) 0%, oklch(0.15 0 0) 60%, oklch(0.1 0 0) 100%)",
+};
 
 export const Route = createFileRoute("/_main/profile/$username")({
   head: () => ({
@@ -260,21 +267,9 @@ function ProfilePage() {
     });
   }
 
-  const roleBadgeColor: Record<string, string> = {
-    ADMIN: "border-red-500/40 bg-red-500/10 text-red-400",
-    MODERATOR: "border-blue-500/40 bg-blue-500/10 text-blue-400",
-    USER: "border-border bg-card text-muted-foreground",
-  };
-
   return (
     <div className="flex flex-col">
-      <div
-        className="h-40 w-full border-b border-border sm:h-48"
-        style={{
-          background:
-            "linear-gradient(135deg, oklch(0.45 0.27 25 / 30%) 0%, oklch(0.15 0 0) 60%, oklch(0.1 0 0) 100%)",
-        }}
-      />
+      <div className="h-40 w-full border-b border-border sm:h-48" style={HERO_STYLE} />
 
       {/* Ban banner */}
       {isBanned && (
@@ -303,7 +298,7 @@ function ProfilePage() {
                 {user.name}
               </h1>
               {user.role !== "USER" && (
-                <span className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${roleBadgeColor[user.role]}`}>
+                <span className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${ROLE_COLORS[user.role]}`}>
                   <Shield className="h-3 w-3" />
                   {user.role === "ADMIN" ? "Admin" : "Moderator"}
                 </span>
@@ -329,6 +324,16 @@ function ProfilePage() {
               </span>
             </div>
           </div>
+
+          {/* Message button — visible to authenticated non-own profiles */}
+          {!isOwnProfile && (
+            <div className="pb-1 shrink-0">
+              <MessageButton
+                recipientId={user.id}
+                recipientName={user.name}
+              />
+            </div>
+          )}
 
           {/* Mod actions on profile — only visible to mods, not own profile */}
           {viewerIsMod && !isOwnProfile && (

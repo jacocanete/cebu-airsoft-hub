@@ -47,6 +47,30 @@ export const POLL_STATUS_COLORS: Record<string, string> = {
 
 export const FALLBACK_BADGE = "border border-border bg-muted text-muted-foreground";
 
+export const ROLE_COLORS: Record<string, string> = {
+  ADMIN:     "border-red-500/40 bg-red-500/10 text-red-400",
+  MODERATOR: "border-blue-500/40 bg-blue-500/10 text-blue-400",
+  USER:      "border-border bg-card text-muted-foreground",
+};
+
+export const REPORT_STATUS_COLORS: Record<string, string> = {
+  OPEN:                "text-amber-400 border-amber-500/40 bg-amber-500/10",
+  RESOLVED_ACTIONED:   "text-emerald-400 border-emerald-500/40 bg-emerald-500/10",
+  RESOLVED_DISMISSED:  "text-muted-foreground border-border bg-card",
+};
+
+export const REPORT_CATEGORY_LABELS: Record<string, string> = {
+  SPAM:                              "Spam",
+  HARASSMENT:                        "Harassment",
+  HATE_SPEECH:                       "Hate speech",
+  NSFW:                              "NSFW",
+  MISINFORMATION:                    "Misinformation",
+  OFF_TOPIC:                         "Off-topic",
+  CHEATING_ACCUSATION_WITHOUT_PROOF: "Cheating (no proof)",
+  DOXXING:                           "Doxxing",
+  OTHER:                             "Other",
+};
+
 // Category / filter lists
 
 /** Forum post categories (without "All" — add "All" in filter UIs as needed) */

@@ -30,7 +30,7 @@ function LoginPage() {
           if (redirect) {
             window.location.href = redirect;
           } else {
-            navigate({ to: "/feed" });
+            navigate({ to: "/feed", search: { tag: undefined, sort: "new", category: "All" } });
           }
         },
       },

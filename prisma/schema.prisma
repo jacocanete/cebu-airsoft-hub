@@ -24,30 +24,38 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  posts           Post[]
-  comments        Comment[]
-  votes           Vote[]
-  listings        MarketplaceListing[]
-  rsvps           RSVP[]
-  memberships     GroupMembership[]
-  eventsCreated   GameEvent[]    @relation("organizer")
-  reviewsGiven    SellerReview[] @relation("ReviewerRelation")
-  reviewsReceived SellerReview[] @relation("SellerRelation")
-  notifications   Notification[]
-  postsRemoved     Post[]          @relation("PostsRemovedBy")
-  commentsRemoved  Comment[]       @relation("CommentsRemovedBy")
-  reportsSubmitted Report[]        @relation("ReportsSubmitted")
-  reportsResolved  Report[]        @relation("ReportsResolved")
-  auditLogActions  AuditLogEntry[] @relation("AuditLogActions")
-  bans             Ban[]           @relation("UserBans")
-  bansIssued       Ban[]           @relation("BansIssued")
-  bansLifted       Ban[]           @relation("BansLifted")
-  modNotesAbout    ModNote[]       @relation("NotesAbout")
-  modNotesAuthored ModNote[]       @relation("NotesAuthored")
+  posts            Post[]
+  comments         Comment[]
+  votes            Vote[]
+  commentVotes     CommentVote[]
+  listings         MarketplaceListing[]
+  rsvps            RSVP[]
+  memberships      GroupMembership[]
+  eventsCreated    GameEvent[]          @relation("organizer")
+  reviewsGiven     SellerReview[]       @relation("ReviewerRelation")
+  reviewsReceived  SellerReview[]       @relation("SellerRelation")
+  notifications    Notification[]
+  postsRemoved     Post[]               @relation("PostsRemovedBy")
+  commentsRemoved  Comment[]            @relation("CommentsRemovedBy")
+  reportsSubmitted Report[]             @relation("ReportsSubmitted")
+  reportsResolved  Report[]             @relation("ReportsResolved")
+  auditLogActions  AuditLogEntry[]      @relation("AuditLogActions")
+  bans             Ban[]                @relation("UserBans")
+  bansIssued       Ban[]                @relation("BansIssued")
+  bansLifted       Ban[]                @relation("BansLifted")
+  modNotesAbout    ModNote[]            @relation("NotesAbout")
+  modNotesAuthored ModNote[]            @relation("NotesAuthored")
 
   // Better Auth
   sessions Session[]
   accounts Account[]
+
+  // Messaging
+  conversationsAsP1 Conversation[] @relation("ConversationP1")
+  conversationsAsP2 Conversation[] @relation("ConversationP2")
+  messagesSent      Message[]
+  blocksGiven       UserBlock[]    @relation("BlocksGiven")
+  blocksReceived    UserBlock[]    @relation("BlocksReceived")
 }
 
 enum Role {
@@ -114,27 +122,29 @@ model Post {
 
   // Soft-delete fields — set by mod actions, never actually removed from DB.
   // deletedByAuthor=true means the author removed their own post.
-  deletedAt      DateTime?
-  deletedById    String?
-  deletedBy      User?     @relation("PostsRemovedBy", fields: [deletedById], references: [id])
-  deletionReason String?
-  deletedByAuthor Boolean  @default(false)
+  deletedAt       DateTime?
+  deletedById     String?
+  deletedBy       User?     @relation("PostsRemovedBy", fields: [deletedById], references: [id])
+  deletionReason  String?
+  deletedByAuthor Boolean   @default(false)
+  editedAt        DateTime?
 
   comments Comment[]
   votes    Vote[]
 }
 
 model Comment {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   content         String
   postId          String
   authorId        String
   parentCommentId String?
-  post            Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author          User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  parent          Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id])
-  replies         Comment[] @relation("CommentReplies")
-  createdAt       DateTime  @default(now())
+  post            Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author          User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent          Comment?      @relation("CommentReplies", fields: [parentCommentId], references: [id])
+  replies         Comment[]     @relation("CommentReplies")
+  votes           CommentVote[]
+  createdAt       DateTime      @default(now())
 
   // Soft-delete fields
   deletedAt       DateTime?
@@ -142,6 +152,7 @@ model Comment {
   deletedBy       User?     @relation("CommentsRemovedBy", fields: [deletedById], references: [id])
   deletionReason  String?
   deletedByAuthor Boolean   @default(false)
+  editedAt        DateTime?
 }
 
 model Vote {
@@ -152,6 +163,16 @@ model Vote {
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@id([userId, postId])
+}
+
+model CommentVote {
+  userId    String
+  commentId String
+  value     Int
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, commentId])
 }
 
 model Poll {
@@ -167,9 +188,9 @@ model Poll {
 }
 
 model PollOption {
-  id     String      @id @default(cuid())
+  id     String     @id @default(cuid())
   pollId String
-  poll   Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
   text   String
   votes  PollVote[]
 }
@@ -190,7 +211,7 @@ enum PollStatus {
 // Marketplace
 
 model MarketplaceListing {
-  id          String        @id @default(cuid())
+  id          String         @id @default(cuid())
   sellerId    String
   title       String
   description String
@@ -198,10 +219,10 @@ model MarketplaceListing {
   condition   ItemCondition
   category    String
   images      String[]
-  status      ListingStatus @default(AVAILABLE)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  seller      User          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  status      ListingStatus  @default(AVAILABLE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  seller      User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   reviews     SellerReview[]
 }
 
@@ -253,8 +274,8 @@ model GameEvent {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  group     Group?     @relation("group", fields: [groupId], references: [id])
-  organizer User       @relation("organizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  group     Group? @relation("group", fields: [groupId], references: [id])
+  organizer User   @relation("organizer", fields: [organizerId], references: [id], onDelete: Cascade)
   rsvps     RSVP[]
 }
 
@@ -294,7 +315,7 @@ model Group {
   createdAt   DateTime @default(now())
 
   members GroupMembership[]
-  events  GameEvent[]        @relation("group")
+  events  GameEvent[]       @relation("group")
 }
 
 model GroupMembership {
@@ -395,19 +416,19 @@ enum AuditAction {
 
 // Polymorphic report — one model covers all reportable target types
 model Report {
-  id             String         @id @default(cuid())
+  id             String           @id @default(cuid())
   reporterId     String
-  reporter       User           @relation("ReportsSubmitted", fields: [reporterId], references: [id], onDelete: Cascade)
+  reporter       User             @relation("ReportsSubmitted", fields: [reporterId], references: [id], onDelete: Cascade)
   targetType     ModerationTarget
   targetId       String
   category       ReportCategory
   reason         String?
-  status         ReportStatus   @default(OPEN)
+  status         ReportStatus     @default(OPEN)
   resolvedById   String?
-  resolvedBy     User?          @relation("ReportsResolved", fields: [resolvedById], references: [id])
+  resolvedBy     User?            @relation("ReportsResolved", fields: [resolvedById], references: [id])
   resolvedAt     DateTime?
   resolutionNote String?
-  createdAt      DateTime       @default(now())
+  createdAt      DateTime         @default(now())
 
   @@index([status, createdAt])
   @@index([targetType, targetId])
@@ -429,6 +450,67 @@ model AuditLogEntry {
   @@index([createdAt])
   @@index([actorId])
   @@index([targetType, targetId])
+}
+
+// Messaging
+
+// contextType encodes which resource this thread is "about" (nullable = free-form DM).
+// The unique constraint prevents duplicate threads for the same pair + context.
+enum ConversationContext {
+  POST
+  LISTING
+  EVENT
+  GROUP
+}
+
+model Conversation {
+  id             String               @id @default(cuid())
+  subject        String
+  contextType    ConversationContext?
+  contextId      String?
+  participant1Id String
+  participant2Id String
+  lastMessageAt  DateTime?
+  createdAt      DateTime             @default(now())
+
+  participant1 User      @relation("ConversationP1", fields: [participant1Id], references: [id], onDelete: Cascade)
+  participant2 User      @relation("ConversationP2", fields: [participant2Id], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  // One thread per pair per context. For free-form DMs (contextType=null) the
+  // pair itself is unique since there's no context discriminator.
+  @@unique([participant1Id, participant2Id, contextType, contextId])
+  @@index([participant1Id, lastMessageAt])
+  @@index([participant2Id, lastMessageAt])
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  embed          Json?
+  readAt         DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlocksGiven", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
 }
 
 // Notifications

@@ -21,6 +21,8 @@ import pollsRoutes from "./routes/polls.js";
 import reportsRoutes from "./routes/reports.js";
 import auditRoutes from "./routes/audit.js";
 import notificationsRoutes from "./routes/notifications.js";
+import conversationsRoutes from "./routes/messages.js";
+import blocksRoutes from "./routes/blocks.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -59,6 +61,8 @@ app.use("/api/posts", pollsRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/notifications", notificationsRoutes);
+app.use("/api/conversations", conversationsRoutes);
+app.use("/api/blocks", blocksRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });

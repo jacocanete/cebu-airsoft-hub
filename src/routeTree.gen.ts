@@ -19,11 +19,13 @@ import { Route as MainModlogRouteImport } from './routes/_main/modlog'
 import { Route as MainModRouteImport } from './routes/_main/mod'
 import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as MainMessagesIndexRouteImport } from './routes/_main/messages/index'
 import { Route as MainMarketplaceIndexRouteImport } from './routes/_main/marketplace/index'
 import { Route as MainGroupsIndexRouteImport } from './routes/_main/groups/index'
 import { Route as MainFeedIndexRouteImport } from './routes/_main/feed/index'
 import { Route as MainEventsIndexRouteImport } from './routes/_main/events/index'
 import { Route as MainProfileUsernameRouteImport } from './routes/_main/profile/$username'
+import { Route as MainMessagesIdRouteImport } from './routes/_main/messages/$id'
 import { Route as MainMarketplaceNewRouteImport } from './routes/_main/marketplace/new'
 import { Route as MainMarketplaceIdRouteImport } from './routes/_main/marketplace/$id'
 import { Route as MainGroupsNewRouteImport } from './routes/_main/groups/new'
@@ -82,6 +84,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AuthRoute,
 } as any)
+const MainMessagesIndexRoute = MainMessagesIndexRouteImport.update({
+  id: '/messages/',
+  path: '/messages/',
+  getParentRoute: () => MainRoute,
+} as any)
 const MainMarketplaceIndexRoute = MainMarketplaceIndexRouteImport.update({
   id: '/marketplace/',
   path: '/marketplace/',
@@ -105,6 +112,11 @@ const MainEventsIndexRoute = MainEventsIndexRouteImport.update({
 const MainProfileUsernameRoute = MainProfileUsernameRouteImport.update({
   id: '/profile/$username',
   path: '/profile/$username',
+  getParentRoute: () => MainRoute,
+} as any)
+const MainMessagesIdRoute = MainMessagesIdRouteImport.update({
+  id: '/messages/$id',
+  path: '/messages/$id',
   getParentRoute: () => MainRoute,
 } as any)
 const MainMarketplaceNewRoute = MainMarketplaceNewRouteImport.update({
@@ -171,11 +183,13 @@ export interface FileRoutesByFullPath {
   '/groups/new': typeof MainGroupsNewRoute
   '/marketplace/$id': typeof MainMarketplaceIdRoute
   '/marketplace/new': typeof MainMarketplaceNewRoute
+  '/messages/$id': typeof MainMessagesIdRoute
   '/profile/$username': typeof MainProfileUsernameRoute
   '/events/': typeof MainEventsIndexRoute
   '/feed/': typeof MainFeedIndexRoute
   '/groups/': typeof MainGroupsIndexRoute
   '/marketplace/': typeof MainMarketplaceIndexRoute
+  '/messages/': typeof MainMessagesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof MainIndexRoute
@@ -195,11 +209,13 @@ export interface FileRoutesByTo {
   '/groups/new': typeof MainGroupsNewRoute
   '/marketplace/$id': typeof MainMarketplaceIdRoute
   '/marketplace/new': typeof MainMarketplaceNewRoute
+  '/messages/$id': typeof MainMessagesIdRoute
   '/profile/$username': typeof MainProfileUsernameRoute
   '/events': typeof MainEventsIndexRoute
   '/feed': typeof MainFeedIndexRoute
   '/groups': typeof MainGroupsIndexRoute
   '/marketplace': typeof MainMarketplaceIndexRoute
+  '/messages': typeof MainMessagesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -222,11 +238,13 @@ export interface FileRoutesById {
   '/_main/groups/new': typeof MainGroupsNewRoute
   '/_main/marketplace/$id': typeof MainMarketplaceIdRoute
   '/_main/marketplace/new': typeof MainMarketplaceNewRoute
+  '/_main/messages/$id': typeof MainMessagesIdRoute
   '/_main/profile/$username': typeof MainProfileUsernameRoute
   '/_main/events/': typeof MainEventsIndexRoute
   '/_main/feed/': typeof MainFeedIndexRoute
   '/_main/groups/': typeof MainGroupsIndexRoute
   '/_main/marketplace/': typeof MainMarketplaceIndexRoute
+  '/_main/messages/': typeof MainMessagesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -248,11 +266,13 @@ export interface FileRouteTypes {
     | '/groups/new'
     | '/marketplace/$id'
     | '/marketplace/new'
+    | '/messages/$id'
     | '/profile/$username'
     | '/events/'
     | '/feed/'
     | '/groups/'
     | '/marketplace/'
+    | '/messages/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -272,11 +292,13 @@ export interface FileRouteTypes {
     | '/groups/new'
     | '/marketplace/$id'
     | '/marketplace/new'
+    | '/messages/$id'
     | '/profile/$username'
     | '/events'
     | '/feed'
     | '/groups'
     | '/marketplace'
+    | '/messages'
   id:
     | '__root__'
     | '/_auth'
@@ -298,11 +320,13 @@ export interface FileRouteTypes {
     | '/_main/groups/new'
     | '/_main/marketplace/$id'
     | '/_main/marketplace/new'
+    | '/_main/messages/$id'
     | '/_main/profile/$username'
     | '/_main/events/'
     | '/_main/feed/'
     | '/_main/groups/'
     | '/_main/marketplace/'
+    | '/_main/messages/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -382,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_main/messages/': {
+      id: '/_main/messages/'
+      path: '/messages'
+      fullPath: '/messages/'
+      preLoaderRoute: typeof MainMessagesIndexRouteImport
+      parentRoute: typeof MainRoute
+    }
     '/_main/marketplace/': {
       id: '/_main/marketplace/'
       path: '/marketplace'
@@ -415,6 +446,13 @@ declare module '@tanstack/react-router' {
       path: '/profile/$username'
       fullPath: '/profile/$username'
       preLoaderRoute: typeof MainProfileUsernameRouteImport
+      parentRoute: typeof MainRoute
+    }
+    '/_main/messages/$id': {
+      id: '/_main/messages/$id'
+      path: '/messages/$id'
+      fullPath: '/messages/$id'
+      preLoaderRoute: typeof MainMessagesIdRouteImport
       parentRoute: typeof MainRoute
     }
     '/_main/marketplace/new': {
@@ -511,11 +549,13 @@ interface MainRouteChildren {
   MainGroupsNewRoute: typeof MainGroupsNewRoute
   MainMarketplaceIdRoute: typeof MainMarketplaceIdRoute
   MainMarketplaceNewRoute: typeof MainMarketplaceNewRoute
+  MainMessagesIdRoute: typeof MainMessagesIdRoute
   MainProfileUsernameRoute: typeof MainProfileUsernameRoute
   MainEventsIndexRoute: typeof MainEventsIndexRoute
   MainFeedIndexRoute: typeof MainFeedIndexRoute
   MainGroupsIndexRoute: typeof MainGroupsIndexRoute
   MainMarketplaceIndexRoute: typeof MainMarketplaceIndexRoute
+  MainMessagesIndexRoute: typeof MainMessagesIndexRoute
 }
 
 const MainRouteChildren: MainRouteChildren = {
@@ -534,11 +574,13 @@ const MainRouteChildren: MainRouteChildren = {
   MainGroupsNewRoute: MainGroupsNewRoute,
   MainMarketplaceIdRoute: MainMarketplaceIdRoute,
   MainMarketplaceNewRoute: MainMarketplaceNewRoute,
+  MainMessagesIdRoute: MainMessagesIdRoute,
   MainProfileUsernameRoute: MainProfileUsernameRoute,
   MainEventsIndexRoute: MainEventsIndexRoute,
   MainFeedIndexRoute: MainFeedIndexRoute,
   MainGroupsIndexRoute: MainGroupsIndexRoute,
   MainMarketplaceIndexRoute: MainMarketplaceIndexRoute,
+  MainMessagesIndexRoute: MainMessagesIndexRoute,
 }
 
 const MainRouteWithChildren = MainRoute._addFileChildren(MainRouteChildren)

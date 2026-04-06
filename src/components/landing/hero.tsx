@@ -52,6 +52,7 @@ export function Hero() {
               </Link>
               <Link
                 to="/events"
+                search={{ tab: "Upcoming", gameType: "All" }}
                 className="inline-flex items-center gap-2 rounded border border-border px-5 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors hover:bg-accent hover:border-primary/50"
               >
                 Find a game

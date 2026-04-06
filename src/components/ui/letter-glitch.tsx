@@ -1,4 +1,18 @@
+import type { CSSProperties } from "react";
 import { useRef, useEffect } from "react";
+
+const WRAPPER_STYLE: CSSProperties = {
+  position: "relative", width: "100%", height: "100%", overflow: "hidden",
+};
+const CANVAS_STYLE: CSSProperties = { display: "block", width: "100%", height: "100%" };
+const OUTER_VIGNETTE_STYLE: CSSProperties = {
+  position: "absolute", inset: 0, pointerEvents: "none",
+  background: "radial-gradient(circle, rgba(0,0,0,0) 40%, rgba(0,0,0,1) 100%)",
+};
+const CENTER_VIGNETTE_STYLE: CSSProperties = {
+  position: "absolute", inset: 0, pointerEvents: "none",
+  background: "radial-gradient(circle, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 60%)",
+};
 
 interface Letter {
   char: string;
@@ -184,36 +198,16 @@ export function LetterGlitch({
     window.addEventListener("resize", handleResize);
     return () => {
       cancelAnimationFrame(animationRef.current);
+      clearTimeout(resizeTimeout);
       window.removeEventListener("resize", handleResize);
     };
   }, [glitchSpeed, smooth]);
 
   return (
-    <div
-      className={className}
-      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}
-    >
-      <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
-      {outerVignette && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            background: "radial-gradient(circle, rgba(0,0,0,0) 40%, rgba(0,0,0,1) 100%)",
-          }}
-        />
-      )}
-      {centerVignette && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            background: "radial-gradient(circle, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 60%)",
-          }}
-        />
-      )}
+    <div className={className} style={WRAPPER_STYLE}>
+      <canvas ref={canvasRef} style={CANVAS_STYLE} />
+      {outerVignette && <div style={OUTER_VIGNETTE_STYLE} />}
+      {centerVignette && <div style={CENTER_VIGNETTE_STYLE} />}
     </div>
   );
 }

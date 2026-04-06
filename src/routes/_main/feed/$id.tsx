@@ -1,19 +1,23 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { queryClient } from "@/lib/query-client";
 import { Flag, Pin, Lock } from "lucide-react";
 import { ShareButton } from "@/components/shared/share-button";
 import { CommentThread } from "@/components/feed/comment-thread";
 import { VoteControl } from "@/components/shared/vote-control";
 import { AnimatedCount } from "@/components/shared/animated-count";
-import { CATEGORY_COLORS, FALLBACK_BADGE } from "@/lib/constants";
+import { CATEGORY_COLORS, FALLBACK_BADGE, FORUM_CATEGORIES } from "@/lib/constants";
 import { Poll } from "@/components/feed/poll";
+import { PostEditor } from "@/components/feed/post-editor";
+import { TagInput } from "@/components/feed/tag-input";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { PROSE_CLASSES } from "@/lib/prose";
+import { stripMarkdown } from "@/lib/markdown";
 import { BackLink } from "@/components/shared/back-link";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
-import { usePostDetail } from "@/hooks/use-posts";
+import { usePostDetail, useUpdatePost, useVote } from "@/hooks/use-posts";
 import { useComments, useCreateComment, type CommentSort } from "@/hooks/use-comments";
 import { usePostRoom } from "@/hooks/use-post-room";
 import { useRequireAuth } from "@/hooks/use-require-auth";
@@ -47,10 +51,47 @@ function normalizePoll(poll: NonNullable<PostDetail["poll"]>): PollData {
   };
 }
 
+
 export const Route = createFileRoute("/_main/feed/$id")({
-  head: () => ({
-    meta: [{ title: "Post | Detachment Reaper" }],
-  }),
+  loader: async ({ params }) => {
+    // Prefetch into the React Query cache so PostPage's usePostDetail() hits
+    // cached data — no extra network round-trip.
+    const post = await queryClient.ensureQueryData<PostDetail>({
+      queryKey: ["posts", params.id],
+      queryFn: () =>
+        import("@/lib/api").then(({ api }) =>
+          api.get<PostDetail>(`/api/posts/${params.id}`),
+        ),
+    });
+    return { post };
+  },
+  head: ({ loaderData }) => {
+    const post = loaderData?.post;
+    if (!post) {
+      return { meta: [{ title: "Post | Detachment Reaper" }] };
+    }
+
+    const title = `${post.title} — Detachment Reaper`;
+    const excerpt = post.deletedAt
+      ? ""
+      : stripMarkdown(post.content).slice(0, 200) +
+        (post.content.length > 200 ? "…" : "");
+
+    return {
+      meta: [
+        { title },
+        ...(excerpt ? [{ name: "description", content: excerpt }] : []),
+        { property: "og:title", content: post.title },
+        ...(excerpt ? [{ property: "og:description", content: excerpt }] : []),
+        { property: "og:type", content: "article" },
+        { property: "og:site_name", content: "Detachment Reaper" },
+        { property: "article:author", content: `u/${post.author.username}` },
+        { name: "twitter:card", content: "summary" },
+        { name: "twitter:title", content: post.title },
+        ...(excerpt ? [{ name: "twitter:description", content: excerpt }] : []),
+      ],
+    };
+  },
   component: PostPage,
 });
 
@@ -58,20 +99,66 @@ function PostPage() {
   const { id } = Route.useParams();
   usePostRoom(id);
   const { data: post, isLoading } = usePostDetail(id);
-  const [commentSort, setCommentSort] = useState<CommentSort>("new");
+  const [commentSort, setCommentSort] = useState<CommentSort>("best");
   const { data: comments = [] } = useComments(id, commentSort);
   const createComment = useCreateComment();
   const requireAuth = useRequireAuth();
   const { data: session } = useCurrentUser();
   const [commentText, setCommentText] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editTags, setEditTags] = useState<string[]>([]);
 
-  // All mod hooks must be called unconditionally — before any early return
+  // Pinned new comments — client-side only, resets on navigation
+  const [pinnedNewIds, setPinnedNewIds] = useState<string[]>([]);
+  const newCommentIdRef = useRef<string | null>(null);
+
+  // All hooks called unconditionally — before any early return
+  const vote = useVote();
+  const updatePost = useUpdatePost(id);
   const removePost = useRemovePost(id);
   const restorePost = useRestorePost(id);
   const pinPost = usePinPost(id);
   const lockPost = useLockPost(id);
   const deletePost = useDeletePost(id);
+
+  // Reorder the server-sorted list so the user's own new comments always
+  // appear first, regardless of the active sort mode. Deleted pinned comments
+  // are dropped from the pin section and revert to their natural position.
+  const orderedComments = useMemo(() => {
+    if (pinnedNewIds.length === 0) return comments;
+    const pinnedSet = new Set(pinnedNewIds);
+    const pinned: typeof comments = [];
+    for (const pinnedId of pinnedNewIds) {
+      const c = comments.find((x) => x.id === pinnedId);
+      if (c && !c.deletedAt) pinned.push(c);
+    }
+    const rest = comments.filter((c) => !pinnedSet.has(c.id));
+    return [...pinned, ...rest];
+  }, [comments, pinnedNewIds]);
+
+  // Scroll to the new comment once it arrives in the fetched data.
+  // Runs after every comments update; exits early if no scroll is pending.
+  useEffect(() => {
+    const pending = newCommentIdRef.current;
+    if (!pending) return;
+    if (!comments.some((c) => c.id === pending)) return;
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const el = document.getElementById(`comment-${pending}`);
+    if (el) {
+      el.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "center",
+      });
+    }
+    newCommentIdRef.current = null;
+  }, [comments]);
 
   if (isLoading || !post) {
     return (
@@ -86,7 +173,10 @@ function PostPage() {
   const downvotes = post.downvotes ?? 0;
   const commentCount = post.commentCount ?? 0;
   const userVote = (post.votes.find((v) => v.userId === user?.id)?.value ?? 0) as 1 | -1 | 0;
-  const pollData = post.poll ? normalizePoll(post.poll) : null;
+  const pollData = useMemo(
+    () => (post.poll ? normalizePoll(post.poll) : null),
+    [post.poll],
+  );
   const isRemoved = !!post.deletedAt;
   const userIsMod = isMod(user);
 
@@ -96,7 +186,13 @@ function PostPage() {
     requireAuth(() =>
       createComment.mutate(
         { postId: id, content: commentText },
-        { onSuccess: () => setCommentText("") },
+        {
+          onSuccess: (data) => {
+            setCommentText("");
+            setPinnedNewIds((prev) => [data.id, ...prev]);
+            newCommentIdRef.current = data.id;
+          },
+        },
       ),
     );
   }
@@ -126,9 +222,14 @@ function PostPage() {
                   {post.category}
                 </span>
                 {!isRemoved && post.tags.map((tag: string) => (
-                  <span key={tag} className="text-xs text-muted-foreground/60">
+                  <Link
+                    key={tag}
+                    to="/feed"
+                    search={{ tag, sort: "new", category: "All" }}
+                    className="text-xs text-muted-foreground/60 hover:text-primary transition-colors"
+                  >
                     #{tag}
-                  </span>
+                  </Link>
                 ))}
               </div>
               {(user?.id === post.author.id || userIsMod) && (
@@ -140,6 +241,13 @@ function PostPage() {
                   isLocked={post.locked}
                   isPost
                   targetLabel="post"
+                  onEdit={() => {
+                    setEditTitle(post.title);
+                    setEditContent(post.content);
+                    setEditCategory(post.category);
+                    setEditTags([...post.tags]);
+                    setIsEditing(true);
+                  }}
                   onDelete={() => deletePost.mutate()}
                   onRemove={(reason) => removePost.mutate(reason)}
                   onRestore={() => restorePost.mutate()}
@@ -152,57 +260,116 @@ function PostPage() {
               )}
             </div>
 
-            <h1 className="text-xl font-black uppercase tracking-tight text-foreground sm:text-2xl mb-4">
-              {post.title}
-            </h1>
-
-            <div className="flex items-center gap-3 pb-4 border-b border-border">
-              <UserAvatar
-                name={post.author.name}
-                username={post.author.username}
-                size="sm"
-                linkToProfile
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <Link
-                    to="/profile/$username"
-                    params={{ username: post.author.username }}
-                    className="text-sm font-bold text-foreground hover:text-primary transition-colors"
-                  >
-                    {post.author.name}
-                  </Link>
-                </div>
-                <p className="label-military text-muted-foreground/60">
-                  u/{post.author.username} · {formatRelativeTime(post.createdAt)}
-                </p>
-              </div>
-            </div>
-
-            {isRemoved ? (
-              <div className="py-6">
-                <RemovedPlaceholder
-                  deletedByAuthor={post.deletedByAuthor}
-                  deletedBy={post.deletedBy}
-                  deletedAt={post.deletedAt!}
+            {isEditing ? (
+              /* ── Edit form ───────────────────────────────────────────── */
+              <div className="flex flex-col gap-4 py-4">
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  maxLength={200}
+                  placeholder="Title"
+                  className="h-10 w-full rounded border border-border bg-background px-3 text-base font-bold text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
                 />
+                <select
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1"
+                >
+                  {FORUM_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <PostEditor value={editContent} onChange={setEditContent} minRows={8} />
+                <div className="flex flex-col gap-1.5">
+                  <label className="label-military text-foreground">Tags</label>
+                  <TagInput tags={editTags} onChange={setEditTags} />
+                </div>
+                <div className="flex gap-2 justify-end border-t border-border pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="rounded border border-border px-4 py-2 label-military text-muted-foreground hover:bg-accent transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={updatePost.isPending || !editTitle.trim() || !editContent.trim()}
+                    onClick={() =>
+                      updatePost.mutate(
+                        { title: editTitle, content: editContent, category: editCategory, tags: editTags },
+                        { onSuccess: () => setIsEditing(false) },
+                      )
+                    }
+                    className="rounded bg-primary px-4 py-2 label-military text-primary-foreground hover:bg-primary/85 transition-colors disabled:opacity-60"
+                  >
+                    {updatePost.isPending ? "Saving…" : "Save"}
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className={`py-4 ${PROSE_CLASSES}`}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {post.content}
-                </ReactMarkdown>
-              </div>
+              /* ── Read-only view ──────────────────────────────────────── */
+              <>
+                <h1 className="text-xl font-black uppercase tracking-tight text-foreground sm:text-2xl mb-4">
+                  {post.title}
+                </h1>
+
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <UserAvatar
+                    name={post.author.name}
+                    username={post.author.username}
+                    size="sm"
+                    linkToProfile
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to="/profile/$username"
+                        params={{ username: post.author.username }}
+                        className="text-sm font-bold text-foreground hover:text-primary transition-colors"
+                      >
+                        {post.author.name}
+                      </Link>
+                    </div>
+                    <p className="label-military text-muted-foreground/60">
+                      u/{post.author.username} · {formatRelativeTime(post.createdAt)}
+                      {post.editedAt && (
+                        <span className="italic ml-1 text-muted-foreground/40">
+                          · edited {formatRelativeTime(post.editedAt)}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {isRemoved ? (
+                  <div className="py-6">
+                    <RemovedPlaceholder
+                      deletedByAuthor={post.deletedByAuthor}
+                      deletedBy={post.deletedBy}
+                      deletedAt={post.deletedAt!}
+                    />
+                  </div>
+                ) : (
+                  <div className={`py-4 ${PROSE_CLASSES}`}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {post.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
+              </>
             )}
 
             {!isRemoved && pollData && <Poll poll={pollData} />}
 
             <div className="flex items-center gap-2 pt-4 border-t border-border flex-wrap">
               <VoteControl
-                postId={id}
                 upvotes={upvotes}
                 downvotes={downvotes}
                 userVote={userVote}
+                onVote={(value) => vote.mutate({ postId: id, value })}
+                isPending={vote.isPending}
                 layout="horizontal"
               />
 
@@ -232,7 +399,7 @@ function PostPage() {
                 Comments
               </p>
               <div className="flex gap-0.5">
-                {(["new", "old"] as const).map((s) => (
+                {(["best", "top", "new", "old"] as const).map((s) => (
                   <button
                     key={s}
                     onClick={() => setCommentSort(s)}
@@ -242,7 +409,7 @@ function PostPage() {
                         : "text-muted-foreground hover:bg-accent hover:text-foreground"
                     }`}
                   >
-                    {s === "new" ? "New" : "Old"}
+                    {s === "best" ? "Best" : s === "top" ? "Top" : s === "new" ? "New" : "Old"}
                   </button>
                 ))}
               </div>
@@ -278,7 +445,11 @@ function PostPage() {
                 No comments yet — be the first to share your thoughts.
               </p>
             ) : (
-              <CommentThread comments={comments} postId={id} />
+              <CommentThread
+                comments={orderedComments}
+                postId={id}
+                highlightIds={pinnedNewIds}
+              />
             )}
           </div>
         </div>

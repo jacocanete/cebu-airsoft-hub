@@ -30,7 +30,7 @@ function RegisterPage() {
     setPasswordError("");
     register.mutate(
       { name, username, email, password },
-      { onSuccess: () => navigate({ to: "/feed" }) },
+      { onSuccess: () => navigate({ to: "/feed", search: { tag: undefined, sort: "new", category: "All" } }) },
     );
   }
 

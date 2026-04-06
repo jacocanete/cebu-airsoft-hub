@@ -10,6 +10,7 @@ import {
 } from "../middleware/auth.js";
 import { logAudit } from "../lib/audit.js";
 import { FORUM_CATEGORIES } from "../lib/constants.js";
+import { excerpt } from "../lib/markdown.js";
 
 const router = Router();
 
@@ -29,6 +30,7 @@ function hotScore(netVotes: number, createdAt: Date): number {
 const postSelect = {
   id: true,
   title: true,
+  content: true,
   category: true,
   tags: true,
   pinned: true,
@@ -43,11 +45,13 @@ const postSelect = {
   votes: { select: { userId: true, value: true } },
 };
 
-// Sanitize a post for the feed list: aggregate votes, expose soft-delete fields
+// Sanitize a post for the feed list: aggregate votes, generate excerpt, expose soft-delete fields.
+// content is consumed here and not forwarded to the client to keep the list payload lean.
 function sanitizePost(
   post: {
     id: string;
     title: string;
+    content: string;
     category: string;
     tags: string[];
     pinned: boolean;
@@ -63,9 +67,10 @@ function sanitizePost(
   },
   userId?: string,
 ) {
-  const { votes, _count, ...rest } = post;
+  const { votes, _count, content, ...rest } = post;
   return {
     ...rest,
+    excerpt: excerpt(content),
     upvotes: votes.filter((v) => v.value === 1).length,
     downvotes: votes.filter((v) => v.value === -1).length,
     commentCount: _count.comments,
@@ -80,12 +85,23 @@ const removePostSchema = z.object({
 // ---------------------------------------------------------------------------
 // GET /api/posts
 // ---------------------------------------------------------------------------
+//
+// Pagination strategy:
+//   sort=new  — true cursor pagination (cursor = post id, ordered by createdAt desc + id desc)
+//   sort=hot/top — bounded window: fetch top 100, rank in JS, return 20 at a time using a
+//                  numeric offset cursor. Rankings shift between page loads but that's
+//                  acceptable given the snapshot-on-load model.
+// Pinned posts are returned as part of page 1 only (cursor absent) and excluded from
+// subsequent pages so they don't appear twice.
 
 router.get("/", optionalAuth, async (req: AuthRequest, res) => {
-  const { category, sort = "hot", q } = req.query as Record<string, string>;
+  const { category, sort = "new", q, tag, cursor, limit: limitStr } = req.query as Record<string, string>;
+  const limit = Math.min(Math.max(parseInt(limitStr ?? "20", 10) || 20, 1), 50);
+  const isFirstPage = !cursor;
 
-  const where = {
+  const baseWhere = {
     ...(category && category !== "All" ? { category } : {}),
+    ...(tag ? { tags: { has: tag } } : {}),
     ...(q
       ? {
           OR: [
@@ -96,28 +112,89 @@ router.get("/", optionalAuth, async (req: AuthRequest, res) => {
       : {}),
   };
 
-  const posts = await prisma.post.findMany({
-    where,
-    select: postSelect,
-    orderBy: { createdAt: "desc" },
-  });
+  const userId = req.user?.id;
 
-  const formatted = posts.map((p) => sanitizePost(p, req.user?.id));
+  if (sort === "new") {
+    // Fetch pinned posts separately for page 1 only
+    const pinned = isFirstPage
+      ? await prisma.post.findMany({
+          where: { ...baseWhere, pinned: true },
+          select: postSelect,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        })
+      : [];
+
+    // Cursor-paginated regular (non-pinned) posts
+    const regularRaw = await prisma.post.findMany({
+      where: { ...baseWhere, pinned: false },
+      select: postSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+      ...(cursor
+        ? { cursor: { id: cursor }, skip: 1 }
+        : {}),
+    });
+
+    const hasNextPage = regularRaw.length > limit;
+    const regularSlice = hasNextPage ? regularRaw.slice(0, limit) : regularRaw;
+    const nextCursor = hasNextPage ? regularSlice[regularSlice.length - 1].id : null;
+
+    const items = [
+      ...pinned.map((p) => sanitizePost(p, userId)),
+      ...regularSlice.map((p) => sanitizePost(p, userId)),
+    ];
+
+    res.json({ items, nextCursor });
+    return;
+  }
+
+  // hot / top — bounded window ranked in JS, paginated by numeric offset
+  // Only page 1 (no cursor) fetches from DB. Subsequent pages use the offset
+  // as a numeric index into the already-ranked top-100 list.
+  // Since we can't cache server-side per-request, each page re-fetches the
+  // window. Acceptable at this scale; add a server-side cache later if needed.
+  const RANKED_WINDOW = 100;
+  const offsetCursor = cursor ? parseInt(cursor, 10) : 0;
+
+  const [pinnedRaw, regularRaw] = await Promise.all([
+    isFirstPage
+      ? prisma.post.findMany({
+          where: { ...baseWhere, pinned: true },
+          select: postSelect,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        })
+      : Promise.resolve([]),
+    prisma.post.findMany({
+      where: { ...baseWhere, pinned: false },
+      select: postSelect,
+      orderBy: { createdAt: "desc" },
+      take: RANKED_WINDOW,
+    }),
+  ]);
+
+  const formatted = regularRaw.map((p) => sanitizePost(p, userId));
 
   if (sort === "top") {
     formatted.sort((a, b) => {
       const diff = (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes);
-      return diff !== 0 ? diff : b.createdAt.getTime() - a.createdAt.getTime();
+      return diff !== 0 ? diff : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  } else if (sort === "hot") {
+  } else {
+    // hot (default)
     formatted.sort(
       (a, b) =>
-        hotScore(b.upvotes - b.downvotes, b.createdAt) -
-        hotScore(a.upvotes - a.downvotes, a.createdAt),
+        hotScore(b.upvotes - b.downvotes, new Date(b.createdAt)) -
+        hotScore(a.upvotes - a.downvotes, new Date(a.createdAt)),
     );
   }
 
-  res.json(formatted);
+  const slice = formatted.slice(offsetCursor, offsetCursor + limit);
+  const nextOffset = offsetCursor + limit;
+  const nextCursor = nextOffset < formatted.length ? String(nextOffset) : null;
+
+  const pinnedFormatted = isFirstPage ? pinnedRaw.map((p) => sanitizePost(p, userId)) : [];
+
+  res.json({ items: [...pinnedFormatted, ...slice], nextCursor });
 });
 
 // ---------------------------------------------------------------------------
@@ -142,6 +219,7 @@ router.get("/:id", optionalAuth, async (req: AuthRequest, res) => {
                 ? { where: { userId }, select: { userId: true } }
                 : false,
             },
+            orderBy: { id: "asc" },
           },
         },
       },
@@ -248,6 +326,78 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// PATCH /api/posts/:id — edit post (author only, unlimited window)
+// ---------------------------------------------------------------------------
+
+const updatePostSchema = z.object({
+  title: z.string().min(1).max(200),
+  content: z.string().min(1).max(40_000),
+  category: z.enum(FORUM_CATEGORIES),
+  tags: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .max(30)
+        .regex(/^[a-z0-9-]+$/, "Tags must be lowercase alphanumeric with hyphens")
+        .transform((t) => t.trim().toLowerCase().replace(/^#/, "")),
+    )
+    .max(8)
+    .default([]),
+});
+
+router.patch("/:id", requireAuth, async (req: AuthRequest, res) => {
+  const postId = req.params.id as string;
+  const userId = req.user!.id;
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { authorId: true, deletedAt: true },
+  });
+
+  if (!post) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+
+  if (post.deletedAt) {
+    res.status(403).json({ error: "Cannot edit a removed post" });
+    return;
+  }
+
+  // Strictly owner-only — mods cannot edit other users' content
+  if (post.authorId !== userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const parsed = updatePostSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const updated = await prisma.post.update({
+    where: { id: postId },
+    data: {
+      title: parsed.data.title,
+      content: parsed.data.content,
+      category: parsed.data.category,
+      tags: parsed.data.tags,
+      editedAt: new Date(),
+    },
+    include: {
+      author: { select: { id: true, username: true, name: true } },
+    },
+  });
+
+  res.json(updated);
+
+  // Broadcast to all viewers of this post
+  req.app.get("io").to(`post:${postId}`).emit("post:updated", updated);
+});
+
+// ---------------------------------------------------------------------------
 // DELETE /api/posts/:id — soft-delete (author OR mod)
 // ---------------------------------------------------------------------------
 
@@ -277,13 +427,15 @@ router.delete("/:id", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
+  let updatedPost: ReturnType<typeof sanitizePost>;
+
   if (actingAsMod) {
     const parsed = removePostSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.flatten() });
       return;
     }
-    await prisma.post.update({
+    const raw = await prisma.post.update({
       where: { id: postId },
       data: {
         deletedAt: new Date(),
@@ -291,7 +443,9 @@ router.delete("/:id", requireAuth, async (req: AuthRequest, res) => {
         deletionReason: parsed.data.reason,
         deletedByAuthor: false,
       },
+      select: postSelect,
     });
+    updatedPost = sanitizePost(raw, user.id);
     await logAudit({
       actorId: user.id,
       action: "POST_REMOVED",
@@ -300,7 +454,7 @@ router.delete("/:id", requireAuth, async (req: AuthRequest, res) => {
       reason: parsed.data.reason,
     });
   } else {
-    await prisma.post.update({
+    const raw = await prisma.post.update({
       where: { id: postId },
       data: {
         deletedAt: new Date(),
@@ -308,10 +462,14 @@ router.delete("/:id", requireAuth, async (req: AuthRequest, res) => {
         deletedById: null,
         deletionReason: null,
       },
+      select: postSelect,
     });
+    updatedPost = sanitizePost(raw, user.id);
   }
 
   res.status(204).end();
+
+  req.app.get("io").to(`post:${postId}`).emit("post:updated", updatedPost);
 });
 
 // ---------------------------------------------------------------------------
@@ -340,7 +498,7 @@ router.patch(
       return;
     }
 
-    await prisma.post.update({
+    const raw = await prisma.post.update({
       where: { id: postId },
       data: {
         deletedAt: null,
@@ -348,6 +506,7 @@ router.patch(
         deletionReason: null,
         deletedByAuthor: false,
       },
+      select: postSelect,
     });
 
     await logAudit({
@@ -358,6 +517,8 @@ router.patch(
     });
 
     res.status(204).end();
+
+    req.app.get("io").to(`post:${postId}`).emit("post:updated", sanitizePost(raw, req.user!.id));
   },
 );
 

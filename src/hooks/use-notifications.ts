@@ -35,7 +35,8 @@ export function useUnreadCount() {
   useEffect(() => {
     if (!session?.user) return;
 
-    socket.connect();
+    const wasConnected = socket.connected;
+    if (!wasConnected) socket.connect();
 
     function handleNew(notification: Notification) {
       qc.setQueryData<{ count: number }>(UNREAD_KEY, (prev) => ({
@@ -54,8 +55,9 @@ export function useUnreadCount() {
     socket.on("notification:new", handleNew);
     return () => {
       socket.off("notification:new", handleNew);
+      if (!wasConnected) socket.disconnect();
     };
-  }, [session?.user, qc]);
+  }, [session?.user?.id, qc]);
 
   return useQuery<{ count: number }>({
     queryKey: UNREAD_KEY,

@@ -18,6 +18,7 @@ import { useModAuditLog } from "@/hooks/use-audit";
 import { useSearchUsers } from "@/hooks/use-search";
 import { useBanUser, useUnbanUser, useChangeRole } from "@/hooks/use-ban";
 import { isMod, isAdmin } from "@/lib/roles";
+import { REPORT_STATUS_COLORS, REPORT_CATEGORY_LABELS } from "@/lib/constants";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import type { Report, AuditLogEntry, UserListItem, Role } from "@/types";
@@ -29,33 +30,11 @@ export const Route = createFileRoute("/_main/mod")({
   }),
   beforeLoad: ({ context }) => {
     if (!isMod(context.session?.user)) {
-      throw redirect({ to: "/feed" });
+      throw redirect({ to: "/feed", search: { tag: undefined, sort: "new", category: "All" } });
     }
   },
   component: ModPage,
 });
-
-// ---------------------------------------------------------------------------
-// Report categories — human-readable
-// ---------------------------------------------------------------------------
-
-const CATEGORY_LABELS: Record<string, string> = {
-  SPAM: "Spam",
-  HARASSMENT: "Harassment",
-  HATE_SPEECH: "Hate speech",
-  NSFW: "NSFW",
-  MISINFORMATION: "Misinformation",
-  OFF_TOPIC: "Off-topic",
-  CHEATING_ACCUSATION_WITHOUT_PROOF: "Cheating (no proof)",
-  DOXXING: "Doxxing",
-  OTHER: "Other",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  OPEN: "text-amber-400 border-amber-500/40 bg-amber-500/10",
-  RESOLVED_ACTIONED: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10",
-  RESOLVED_DISMISSED: "text-muted-foreground border-border bg-card",
-};
 
 // ---------------------------------------------------------------------------
 // Report row
@@ -75,14 +54,22 @@ function ReportRow({ report }: { report: Report }) {
     );
   }
 
-  const targetPath = (() => {
+  const targetLinkProps = (() => {
+    const cls = "inline-flex items-center gap-1 hover:text-foreground transition-colors";
+    const shared = { target: "_blank" as const, rel: "noopener noreferrer", className: cls };
     switch (report.targetType) {
-      case "POST":    return `/feed/${report.targetId}`;
-      case "COMMENT": return `/feed/${report.targetId}`;
-      case "LISTING": return `/marketplace/${report.targetId}`;
-      case "USER":    return `/profile/${report.targetId}`;
-      case "EVENT":   return `/events/${report.targetId}`;
-      case "GROUP":   return `/groups/${report.targetId}`;
+      case "POST":
+      case "COMMENT":
+        return <Link to="/feed/$id" params={{ id: report.targetId }} {...shared}>View target <ExternalLink className="h-3 w-3" /></Link>;
+      case "LISTING":
+        return <Link to="/marketplace/$id" params={{ id: report.targetId }} {...shared}>View target <ExternalLink className="h-3 w-3" /></Link>;
+      case "EVENT":
+        return <Link to="/events/$id" params={{ id: report.targetId }} {...shared}>View target <ExternalLink className="h-3 w-3" /></Link>;
+      case "GROUP":
+        return <Link to="/groups/$slug" params={{ slug: report.targetId }} {...shared}>View target <ExternalLink className="h-3 w-3" /></Link>;
+      case "USER":
+        // targetId is a user ID; profile route needs a username — link to mod search as fallback
+        return <Link to="/mod" {...shared}>View target <ExternalLink className="h-3 w-3" /></Link>;
     }
   })();
 
@@ -92,7 +79,7 @@ function ReportRow({ report }: { report: Report }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className={cn(
             "inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-            STATUS_COLORS[report.status] ?? STATUS_COLORS.OPEN,
+            REPORT_STATUS_COLORS[report.status] ?? REPORT_STATUS_COLORS.OPEN,
           )}>
             {report.status.replace("RESOLVED_", "").replace("_", " ")}
           </span>
@@ -100,7 +87,7 @@ function ReportRow({ report }: { report: Report }) {
             {report.targetType}
           </span>
           <span className="label-military text-muted-foreground">
-            {CATEGORY_LABELS[report.category] ?? report.category}
+            {REPORT_CATEGORY_LABELS[report.category] ?? report.category}
           </span>
         </div>
         <span className="text-xs text-muted-foreground shrink-0">
@@ -123,14 +110,7 @@ function ReportRow({ report }: { report: Report }) {
             u/{report.reporter.username}
           </Link>
         </span>
-        <a
-          href={targetPath}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-        >
-          View target <ExternalLink className="h-3 w-3" />
-        </a>
+        {targetLinkProps}
       </div>
 
       {report.status === "OPEN" && (

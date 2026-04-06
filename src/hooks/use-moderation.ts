@@ -72,6 +72,7 @@ export function useRemoveComment(postId: string, commentId: string) {
       api.delete(`/api/posts/${postId}/comments/${commentId}`, { reason }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["comments", postId] });
+      qc.invalidateQueries({ queryKey: ["replies"] });
     },
   });
 }
@@ -83,6 +84,7 @@ export function useRestoreComment(postId: string, commentId: string) {
       api.patch(`/api/posts/${postId}/comments/${commentId}/restore`, {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["comments", postId] });
+      qc.invalidateQueries({ queryKey: ["replies"] });
     },
   });
 }
@@ -94,6 +96,7 @@ export function useDeleteComment(postId: string, commentId: string) {
       api.delete(`/api/posts/${postId}/comments/${commentId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["comments", postId] });
+      qc.invalidateQueries({ queryKey: ["replies"] });
     },
   });
 }
