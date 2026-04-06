@@ -179,6 +179,7 @@ export function useCreatePost() {
       content: string;
       category: string;
       tags: string[];
+      images?: string[];
       poll?: PollDraft;
     }) => api.post("/api/posts", data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["posts", "infinite"] }),

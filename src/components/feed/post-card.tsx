@@ -24,6 +24,7 @@ interface PostCardProps {
   excerpt: string;
   category: string;
   tags: readonly string[];
+  images: string[];
   pinned: boolean;
   locked: boolean;
   upvotes: number;
@@ -69,7 +70,8 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
         />
       </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex gap-3">
+        <div className="flex-1 min-w-0">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">
           {post.pinned && !isRemoved && (
             <span className="inline-flex items-center gap-1 rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
@@ -146,6 +148,26 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
               </Link>
             </div>
           </>
+        )}
+        </div>
+
+        {/* Image thumbnail — shown when post has images and is not removed */}
+        {!isRemoved && post.images?.length > 0 && (
+          <Link
+            to="/feed/$id"
+            params={{ id: post.id }}
+            className="shrink-0 hidden sm:block"
+          >
+            <div className="h-20 w-20 overflow-hidden border border-border bg-muted/20">
+              <img
+                src={post.images[0]}
+                alt=""
+                className="h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </Link>
         )}
       </div>
 

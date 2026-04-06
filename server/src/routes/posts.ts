@@ -33,6 +33,7 @@ const postSelect = {
   content: true,
   category: true,
   tags: true,
+  images: true,
   pinned: true,
   locked: true,
   createdAt: true,
@@ -54,6 +55,7 @@ function sanitizePost(
     content: string;
     category: string;
     tags: string[];
+    images: string[];
     pinned: boolean;
     locked: boolean;
     createdAt: Date;
@@ -271,6 +273,7 @@ const createPostSchema = z.object({
     )
     .max(8)
     .default([]),
+  images: z.array(z.string().url()).max(10).default([]),
   poll: z
     .object({
       question: z.string().min(1),
@@ -291,7 +294,7 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const { title, content, category, tags, poll } = parsed.data;
+  const { title, content, category, tags, images, poll } = parsed.data;
 
   const post = await prisma.post.create({
     data: {
@@ -299,6 +302,7 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
       content,
       category,
       tags,
+      images,
       authorId: req.user!.id,
       ...(poll
         ? {

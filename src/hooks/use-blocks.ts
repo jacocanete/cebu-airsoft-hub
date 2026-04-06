@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useCurrentUser } from "@/hooks/use-auth";
 import type { BlockedUser } from "@/types";
 
 const BLOCKS_KEY = ["blocks"] as const;
 
 export function useBlockedUsers() {
+  const { data: session } = useCurrentUser();
+
   return useQuery<BlockedUser[]>({
     queryKey: BLOCKS_KEY,
     queryFn: () => api.get<BlockedUser[]>("/api/blocks"),
+    enabled: !!session?.user,
     staleTime: 5 * 60_000,
   });
 }

@@ -5,6 +5,9 @@ import { requireAuth, type AuthRequest } from "../middleware/auth.js";
 
 const router = Router();
 
+// Seller select shape reused across list and detail
+const sellerSelectBase = { id: true, username: true, name: true };
+
 router.get("/", async (req, res) => {
   const { condition, category, q, status = "AVAILABLE" } = req.query as Record<string, string>;
 
@@ -13,10 +16,17 @@ router.get("/", async (req, res) => {
       ...(status ? { status: status as "AVAILABLE" | "RESERVED" | "SOLD" } : {}),
       ...(condition ? { condition: condition as "NEW" | "LIKE_NEW" | "USED" | "FOR_PARTS" } : {}),
       ...(category ? { category } : {}),
-      ...(q ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { description: { contains: q, mode: "insensitive" } }] } : {}),
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
     },
     include: {
-      seller: { select: { id: true, username: true, name: true } },
+      seller: { select: sellerSelectBase },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -28,7 +38,14 @@ router.get("/:id", async (req, res) => {
   const listing = await prisma.marketplaceListing.findUnique({
     where: { id: req.params.id as string },
     include: {
-      seller: { select: { id: true, username: true, name: true } },
+      seller: {
+        select: {
+          ...sellerSelectBase,
+          avatar: true,
+          createdAt: true,
+          _count: { select: { listings: true } },
+        },
+      },
     },
   });
 
@@ -37,7 +54,132 @@ router.get("/:id", async (req, res) => {
     return;
   }
 
-  res.json(listing);
+  const reviewStats = await prisma.sellerReview.aggregate({
+    where: { sellerId: listing.sellerId },
+    _avg: { rating: true },
+    _count: { rating: true },
+  });
+
+  res.json({
+    ...listing,
+    seller: {
+      ...listing.seller,
+      averageRating: reviewStats._avg.rating ?? 0,
+      reviewCount: reviewStats._count.rating,
+    },
+  });
+});
+
+router.get("/:id/reviews", async (req, res) => {
+  const listing = await prisma.marketplaceListing.findUnique({
+    where: { id: req.params.id as string },
+    select: { sellerId: true },
+  });
+
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+
+  const reviews = await prisma.sellerReview.findMany({
+    where: { sellerId: listing.sellerId },
+    include: {
+      reviewer: {
+        select: { id: true, username: true, name: true, avatar: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  res.json(reviews);
+});
+
+const createReviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().max(1000).optional(),
+});
+
+router.post("/:id/reviews", requireAuth, async (req: AuthRequest, res) => {
+  const parsed = createReviewSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const listing = await prisma.marketplaceListing.findUnique({
+    where: { id: req.params.id as string },
+    select: { id: true, sellerId: true },
+  });
+
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+
+  if (listing.sellerId === req.user!.id) {
+    res.status(403).json({ error: "Cannot review your own listing" });
+    return;
+  }
+
+  const existing = await prisma.sellerReview.findFirst({
+    where: {
+      sellerId: listing.sellerId,
+      reviewerId: req.user!.id,
+      listingId: listing.id,
+    },
+  });
+
+  if (existing) {
+    res
+      .status(409)
+      .json({ error: "You have already reviewed this seller for this listing" });
+    return;
+  }
+
+  const review = await prisma.sellerReview.create({
+    data: {
+      sellerId: listing.sellerId,
+      reviewerId: req.user!.id,
+      listingId: listing.id,
+      rating: parsed.data.rating,
+      comment: parsed.data.comment ?? null,
+    },
+    include: {
+      reviewer: {
+        select: { id: true, username: true, name: true, avatar: true },
+      },
+    },
+  });
+
+  res.status(201).json(review);
+});
+
+router.get("/:id/related", async (req, res) => {
+  const listing = await prisma.marketplaceListing.findUnique({
+    where: { id: req.params.id as string },
+    select: { id: true, category: true },
+  });
+
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+
+  const related = await prisma.marketplaceListing.findMany({
+    where: {
+      category: listing.category,
+      id: { not: listing.id },
+      status: "AVAILABLE",
+    },
+    include: {
+      seller: { select: sellerSelectBase },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+  });
+
+  res.json(related);
 });
 
 const createListingSchema = z.object({
@@ -62,7 +204,7 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
       sellerId: req.user!.id,
     },
     include: {
-      seller: { select: { id: true, username: true, name: true } },
+      seller: { select: sellerSelectBase },
     },
   });
 
@@ -73,16 +215,15 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
   const parsed = z
     .object({ status: z.enum(["AVAILABLE", "RESERVED", "SOLD"]) })
     .safeParse(req.body);
+
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const { status } = parsed.data;
+
   const id = req.params.id as string;
 
-  const listing = await prisma.marketplaceListing.findUnique({
-    where: { id },
-  });
+  const listing = await prisma.marketplaceListing.findUnique({ where: { id } });
 
   if (!listing || listing.sellerId !== req.user!.id) {
     res.status(403).json({ error: "Forbidden" });
@@ -91,7 +232,7 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
 
   const updated = await prisma.marketplaceListing.update({
     where: { id },
-    data: { status },
+    data: { status: parsed.data.status },
   });
 
   res.json(updated);

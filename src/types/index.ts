@@ -23,6 +23,7 @@ export type SessionUser = {
   name: string;
   username: string;
   role: Role;
+  avatar?: string;
 };
 
 export type Session = {
@@ -57,6 +58,7 @@ export type Post = {
   content: string;
   category: ForumCategory;
   tags: string[];
+  images: string[];
   author: User;
   upvotes: number;
   downvotes: number;
@@ -121,7 +123,11 @@ export type ListingStatus = "Available" | "Reserved" | "Sold";
 
 export type MarketplaceListing = {
   id: string;
-  seller: User;
+  seller: {
+    id: string;
+    username: string;
+    name: string;
+  };
   title: string;
   description: string;
   price: number;
@@ -130,6 +136,39 @@ export type MarketplaceListing = {
   images: string[];
   status: ListingStatus;
   createdAt: string;
+};
+
+// Enriched seller shape returned by GET /api/listings/:id
+export type ListingDetailSeller = {
+  id: string;
+  username: string;
+  name: string;
+  avatar: string | null;
+  createdAt: string;
+  _count: { listings: number };
+  averageRating: number;
+  reviewCount: number;
+};
+
+// Full detail response — includes enriched seller and review stats
+export type MarketplaceListingDetail = Omit<MarketplaceListing, "seller"> & {
+  seller: ListingDetailSeller;
+};
+
+export type SellerReview = {
+  id: string;
+  sellerId: string;
+  reviewerId: string;
+  listingId: string | null;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewer: {
+    id: string;
+    username: string;
+    name: string;
+    avatar: string | null;
+  };
 };
 
 // Events
@@ -175,7 +214,7 @@ export type SoftDeleteFields = {
 
 export type PostListItem = Pick<
   Post,
-  "id" | "title" | "category" | "tags" | "pinned" | "createdAt"
+  "id" | "title" | "category" | "tags" | "images" | "pinned" | "createdAt"
 > &
   SoftDeleteFields & {
     locked: boolean;
@@ -224,6 +263,7 @@ export type UserProfile = {
   name: string;
   bio?: string;
   avatar?: string;
+  coverPhoto?: string;
   gearList?: string;
   playStyle?: string;
   role: Role;
@@ -472,4 +512,30 @@ export type BlockedUser = {
   id: string;
   createdAt: string;
   blocked: MessageParticipant;
+};
+
+// Uploads
+
+export type UploadContext =
+  | "AVATAR"
+  | "COVER_PHOTO"
+  | "POST_IMAGE"
+  | "LISTING_IMAGE"
+  | "GROUP_LOGO"
+  | "GROUP_BANNER";
+
+export type Upload = {
+  id: string;
+  key: string;
+  thumbKey: string | null;
+  url: string;
+  thumbUrl: string | null;
+  filename: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  context: UploadContext;
+  uploaderId: string;
+  createdAt: string;
 };

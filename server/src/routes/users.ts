@@ -60,6 +60,7 @@ router.get("/:username", async (req, res) => {
       name: true,
       bio: true,
       avatar: true,
+      coverPhoto: true,
       gearList: true,
       playStyle: true,
       role: true,
@@ -122,6 +123,83 @@ router.get("/:username/posts", async (req, res) => {
   });
 
   res.json(posts);
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/users/me — update own profile
+// ---------------------------------------------------------------------------
+
+const updateProfileSchema = z.object({
+  bio: z.string().max(500).optional(),
+  playStyle: z.string().max(100).optional(),
+  gearList: z.string().max(1000).optional(),
+  avatar: z.string().url().nullable().optional(),
+  coverPhoto: z.string().url().nullable().optional(),
+});
+
+router.patch("/me", requireAuth, async (req: AuthRequest, res) => {
+  const parsed = updateProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  // Only include fields that were explicitly provided
+  const data = Object.fromEntries(
+    Object.entries(parsed.data).filter(([, v]) => v !== undefined),
+  );
+
+  const user = await prisma.user.update({
+    where: { id: req.user!.id },
+    data,
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      bio: true,
+      avatar: true,
+      coverPhoto: true,
+      gearList: true,
+      playStyle: true,
+    },
+  });
+
+  res.json(user);
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/users/:username/media — public uploads for profile media tab
+// ---------------------------------------------------------------------------
+
+router.get("/:username/media", async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { username: req.params.username as string },
+    select: { id: true },
+  });
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  // prisma.upload is available at runtime; cast needed due to LSP custom-output quirk
+  const uploads = await (prisma as any).upload.findMany({
+    where: { uploaderId: user.id },
+    select: {
+      id: true,
+      url: true,
+      thumbUrl: true,
+      width: true,
+      height: true,
+      context: true,
+      mimeType: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+
+  res.json(uploads);
 });
 
 // ---------------------------------------------------------------------------

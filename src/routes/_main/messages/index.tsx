@@ -13,8 +13,15 @@ export const Route = createFileRoute("/_main/messages/")({
 });
 
 function InboxPage() {
-  const { data, isLoading } = useConversations();
-  const conversations = data?.conversations ?? [];
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useConversations();
+
+  const conversations = data?.pages.flatMap((p) => p.conversations) ?? [];
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
@@ -32,7 +39,7 @@ function InboxPage() {
             <Mail className="h-10 w-10 text-muted-foreground/20" />
             <p className="text-sm text-muted-foreground">No messages yet.</p>
             <p className="text-xs text-muted-foreground/60">
-              Start a conversation from a user's profile, a marketplace listing, or an event.
+              Start a conversation from a user&apos;s profile or an event page.
             </p>
           </div>
         ) : (
@@ -41,6 +48,18 @@ function InboxPage() {
           ))
         )}
       </div>
+
+      {hasNextPage && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="label-military text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+          >
+            {isFetchingNextPage ? "Loading…" : "Load more conversations"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { MarketplaceListing } from "@/types";
+import type {
+  MarketplaceListing,
+  MarketplaceListingDetail,
+  SellerReview,
+} from "@/types";
 
 interface ListingFilters {
   condition?: string;
@@ -11,7 +15,13 @@ interface ListingFilters {
 
 export function useListings(filters?: ListingFilters) {
   return useQuery<MarketplaceListing[]>({
-    queryKey: ["listings", filters?.condition ?? null, filters?.category ?? null, filters?.q ?? null, filters?.status ?? null],
+    queryKey: [
+      "listings",
+      filters?.condition ?? null,
+      filters?.category ?? null,
+      filters?.q ?? null,
+      filters?.status ?? null,
+    ],
     queryFn: () => {
       const params = new URLSearchParams();
       if (filters?.condition) params.set("condition", filters.condition);
@@ -25,11 +35,42 @@ export function useListings(filters?: ListingFilters) {
 }
 
 export function useListingDetail(id: string) {
-  return useQuery<MarketplaceListing>({
+  return useQuery<MarketplaceListingDetail>({
     queryKey: ["listings", id],
     queryFn: () => api.get(`/api/listings/${id}`),
     enabled: !!id,
     staleTime: 60 * 1000,
+  });
+}
+
+export function useSellerReviews(listingId: string) {
+  return useQuery<SellerReview[]>({
+    queryKey: ["listings", listingId, "reviews"],
+    queryFn: () => api.get(`/api/listings/${listingId}/reviews`),
+    enabled: !!listingId,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useCreateSellerReview(listingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { rating: number; comment?: string }) =>
+      api.post<SellerReview>(`/api/listings/${listingId}/reviews`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["listings", listingId, "reviews"] });
+      // Re-fetch detail to refresh seller averageRating / reviewCount
+      qc.invalidateQueries({ queryKey: ["listings", listingId] });
+    },
+  });
+}
+
+export function useRelatedListings(listingId: string) {
+  return useQuery<MarketplaceListing[]>({
+    queryKey: ["listings", listingId, "related"],
+    queryFn: () => api.get(`/api/listings/${listingId}/related`),
+    enabled: !!listingId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

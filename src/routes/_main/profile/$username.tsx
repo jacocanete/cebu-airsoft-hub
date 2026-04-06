@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { OptimizedImage } from "@/components/shared/optimized-image";
+import { useUserMedia } from "@/hooks/use-uploads";
 import {
   Shield,
   CalendarDays,
@@ -46,7 +48,7 @@ export const Route = createFileRoute("/_main/profile/$username")({
   component: ProfilePage,
 });
 
-const TABS = ["Posts", "Comments", "Listings"] as const;
+const TABS = ["Posts", "Media", "Comments", "Listings"] as const;
 type Tab = (typeof TABS)[number];
 
 // ---------------------------------------------------------------------------
@@ -228,6 +230,7 @@ function ProfilePage() {
 
   const { data: user, isLoading } = useUserProfile(username);
   const { data: posts = [] } = useUserPosts(username);
+  const { data: media = [] } = useUserMedia(username);
   const [tab, setTab] = useState<Tab>("Posts");
   const [banDialogOpen, setBanDialogOpen] = useState(false);
 
@@ -269,7 +272,19 @@ function ProfilePage() {
 
   return (
     <div className="flex flex-col">
-      <div className="h-40 w-full border-b border-border sm:h-48" style={HERO_STYLE} />
+      {user.coverPhoto ? (
+        <div className="h-40 w-full border-b border-border sm:h-48 overflow-hidden">
+          <img
+            src={user.coverPhoto}
+            alt="Cover photo"
+            className="h-full w-full object-cover"
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+      ) : (
+        <div className="h-40 w-full border-b border-border sm:h-48" style={HERO_STYLE} />
+      )}
 
       {/* Ban banner */}
       {isBanned && (
@@ -288,6 +303,7 @@ function ProfilePage() {
         <div className="relative -mt-12 mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
           <UserAvatar
             name={user.name}
+            avatar={user.avatar}
             size="2xl"
             className="border-4 border-background"
           />
@@ -438,7 +454,28 @@ function ProfilePage() {
                     </div>
                   </div>
                 ))}
-                {tab !== "Posts" && (
+                {tab === "Media" && (
+                  media.length === 0 ? (
+                    <p className="p-8 text-center text-sm text-muted-foreground">
+                      No media uploads yet.
+                    </p>
+                  ) : (
+                    <div className="columns-2 sm:columns-3 gap-1 p-2">
+                      {media.map((upload) => (
+                        <div key={upload.id} className="mb-1 break-inside-avoid overflow-hidden">
+                          <OptimizedImage
+                            src={upload.url}
+                            thumbSrc={upload.thumbUrl}
+                            alt={upload.context}
+                            aspectRatio=""
+                            className="w-full"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+                {(tab === "Comments" || tab === "Listings") && (
                   <p className="p-8 text-center text-sm text-muted-foreground">
                     Coming soon.
                   </p>

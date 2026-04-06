@@ -5,13 +5,13 @@ import { useEffect, useMemo, useRef } from "react";
 // 100dvh (dynamic viewport height) correctly accounts for mobile browser chrome
 // (address bar, bottom nav) on iOS Safari where 100vh includes hidden UI areas.
 const THREAD_CONTAINER_STYLE: CSSProperties = { height: "calc(100dvh - 56px)" };
-import { ArrowLeft, ShieldOff } from "lucide-react";
+import { ArrowLeft, ShieldOff, ShieldCheck } from "lucide-react";
 import { SkeletonList } from "@/components/shared/skeleton-list";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { MessageItem } from "@/components/messages/MessageItem";
 import { MessageInput } from "@/components/messages/MessageInput";
 import { useConversation, useMessages, useMarkConversationRead } from "@/hooks/use-messages";
-import { useBlockUser, useIsBlocked } from "@/hooks/use-blocks";
+import { useBlockUser, useUnblockUser, useIsBlocked } from "@/hooks/use-blocks";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import {
@@ -37,6 +37,7 @@ function ThreadPage() {
     useMessages(id);
   const { markRead } = useMarkConversationRead(id);
   const { mutate: blockUser } = useBlockUser();
+  const { mutate: unblockUser } = useUnblockUser();
   const isBlocked = useIsBlocked(conversation?.participant.id);
   const bottomRef = useRef<HTMLDivElement>(null);
   const didMarkRead = useRef(false);
@@ -113,23 +114,23 @@ function ThreadPage() {
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            {!isBlocked ? (
+          <DropdownMenuContent align="end" className="w-44">
+            {isBlocked ? (
+              <DropdownMenuItem
+                onSelect={() => unblockUser(conversation.participant.id)}
+                className="flex items-center gap-2"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Unblock user
+              </DropdownMenuItem>
+            ) : (
               <DropdownMenuItem
                 variant="destructive"
-                onSelect={() => {
-                  if (conversation.participant.id) {
-                    blockUser(conversation.participant.id);
-                  }
-                }}
+                onSelect={() => blockUser(conversation.participant.id)}
                 className="flex items-center gap-2"
               >
                 <ShieldOff className="h-3.5 w-3.5" />
                 Block user
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem disabled>
-                User is blocked
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>

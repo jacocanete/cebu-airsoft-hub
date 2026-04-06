@@ -352,11 +352,28 @@ function PostPage() {
                     />
                   </div>
                 ) : (
-                  <div className={`py-4 ${PROSE_CLASSES}`}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {post.content}
-                    </ReactMarkdown>
-                  </div>
+                  <>
+                    <div className={`py-4 ${PROSE_CLASSES}`}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {post.content}
+                      </ReactMarkdown>
+                    </div>
+                    {post.images && post.images.length > 0 && (
+                      <div className={`grid gap-1.5 pb-4 ${post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+                        {post.images.map((src, i) => (
+                          <div key={i} className="overflow-hidden border border-border bg-muted/10">
+                            <img
+                              src={src}
+                              alt={`Image ${i + 1}`}
+                              className="w-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Mail } from "lucide-react";
+import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useCreateConversation } from "@/hooks/use-messages";
 import { useIsBlocked } from "@/hooks/use-blocks";
+import { ApiError } from "@/lib/api";
 import type { ConversationContext } from "@/types";
 
 interface MessageButtonProps {
@@ -36,6 +38,16 @@ export function MessageButton({
     defaultMessage ?? `Hi ${recipientName}!`,
   );
 
+  // Close modal on Escape
+  useEffect(() => {
+    if (!showPrompt) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowPrompt(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showPrompt]);
+
   // Don't render for unauthenticated users, own profile, or blocked users
   if (!session?.user || session.user.id === recipientId || isBlocked) {
     return null;
@@ -49,6 +61,13 @@ export function MessageButton({
         onSuccess: ({ conversationId }) => {
           setShowPrompt(false);
           navigate({ to: "/messages/$id", params: { id: conversationId } });
+        },
+        onError: (err) => {
+          const msg =
+            err instanceof ApiError && err.status === 403
+              ? "You can't message this user."
+              : "Failed to send message. Please try again.";
+          toast.error(msg);
         },
       },
     );

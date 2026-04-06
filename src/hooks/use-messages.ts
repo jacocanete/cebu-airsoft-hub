@@ -5,6 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { socket } from "@/lib/socket";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -28,6 +29,11 @@ function messagesKey(conversationId: string) {
 // useConversations — paginated conversation list with live push
 // ---------------------------------------------------------------------------
 
+type ConversationsInfiniteData = {
+  pages: ConversationsPage[];
+  pageParams: unknown[];
+};
+
 export function useConversations() {
   const qc = useQueryClient();
   const { data: session } = useCurrentUser();
@@ -41,22 +47,26 @@ export function useConversations() {
     function handleNewMessage(payload: { message: Message; conversationId: string }) {
       const { message, conversationId } = payload;
 
-      // Bump the conversation to the top of the list and update preview
-      qc.setQueryData<ConversationsPage>(CONVERSATIONS_KEY, (prev) => {
+      // Patch the infinite query cache — search all pages for the conversation
+      qc.setQueryData<ConversationsInfiniteData>(CONVERSATIONS_KEY, (prev) => {
         if (!prev) return prev;
-        const idx = prev.conversations.findIndex((c) => c.id === conversationId);
 
-        const updatedConv: ConversationListItem | undefined = prev.conversations[idx];
-        if (!updatedConv) {
-          // Conversation not in cache — could be a brand-new thread. Invalidate
-          // so the next render fetches the full list from the server.
+        // Find the conversation across all pages
+        let found: ConversationListItem | undefined;
+        for (const page of prev.pages) {
+          found = page.conversations.find((c) => c.id === conversationId);
+          if (found) break;
+        }
+
+        if (!found) {
+          // Brand-new conversation not yet in cache — invalidate to refetch
           qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
           return prev;
         }
 
         const isFromOther = message.senderId !== session?.user?.id;
         const patched: ConversationListItem = {
-          ...updatedConv,
+          ...found,
           lastMessage: {
             id: message.id,
             content: message.content,
@@ -65,16 +75,23 @@ export function useConversations() {
             readAt: message.readAt,
           },
           lastMessageAt: message.createdAt,
-          unreadCount: isFromOther
-            ? updatedConv.unreadCount + 1
-            : updatedConv.unreadCount,
+          unreadCount: isFromOther ? found.unreadCount + 1 : found.unreadCount,
         };
 
-        const without = prev.conversations.filter((c) => c.id !== conversationId);
-        return { ...prev, conversations: [patched, ...without] };
+        // Remove from wherever it is, prepend to first page
+        const newPages = prev.pages.map((page) => ({
+          ...page,
+          conversations: page.conversations.filter((c) => c.id !== conversationId),
+        }));
+        newPages[0] = {
+          ...newPages[0],
+          conversations: [patched, ...(newPages[0]?.conversations ?? [])],
+        };
+
+        return { ...prev, pages: newPages };
       });
 
-      // Also update unread badge count
+      // Update the unread badge
       if (message.senderId !== session?.user?.id) {
         qc.setQueryData<{ count: number }>(UNREAD_MESSAGES_KEY, (prev) => ({
           count: (prev?.count ?? 0) + 1,
@@ -89,15 +106,15 @@ export function useConversations() {
     };
   }, [session?.user?.id, qc]);
 
-  return useQuery<ConversationsPage>({
+  return useInfiniteQuery<ConversationsPage>({
     queryKey: CONVERSATIONS_KEY,
-    queryFn: () => api.get<ConversationsPage>("/api/conversations?limit=20"),
+    queryFn: ({ pageParam }) => {
+      const cursor = pageParam ? `&cursor=${pageParam}` : "";
+      return api.get<ConversationsPage>(`/api/conversations?limit=20${cursor}`);
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!session?.user,
-    // staleTime keeps the cache warm during a session so navigating away and
-    // back within 60 s doesn't re-fetch unnecessarily. But refetchOnMount must
-    // stay true (the default) so the inbox shows fresh data the moment the
-    // user opens it — especially after receiving a new-message socket event
-    // that couldn't patch the cache because the hook wasn't mounted.
     staleTime: 60_000,
   });
 }
@@ -297,7 +314,7 @@ export function useSendMessage(conversationId: string) {
       );
     },
     onError: (_err, _content, context) => {
-      // Remove the optimistic entry on failure
+      // Remove the optimistic entry and let the user know
       qc.setQueryData<{ pages: MessagesPage[]; pageParams: unknown[] }>(
         messagesKey(conversationId),
         (prev) => {
@@ -313,6 +330,7 @@ export function useSendMessage(conversationId: string) {
           };
         },
       );
+      toast.error("Failed to send message. Please try again.");
     },
   });
 }
@@ -359,18 +377,23 @@ export function useMarkConversationRead(conversationId: string) {
     if (!session?.user) return;
 
     // Capture the delta before zeroing so the badge patch sees the real value.
-    const convList = qc.getQueryData<ConversationsPage>(CONVERSATIONS_KEY);
-    const delta =
-      convList?.conversations.find((c) => c.id === conversationId)
-        ?.unreadCount ?? 0;
+    const infiniteData = qc.getQueryData<ConversationsInfiniteData>(CONVERSATIONS_KEY);
+    let delta = 0;
+    for (const page of infiniteData?.pages ?? []) {
+      const conv = page.conversations.find((c) => c.id === conversationId);
+      if (conv) { delta = conv.unreadCount; break; }
+    }
 
-    qc.setQueryData<ConversationsPage>(CONVERSATIONS_KEY, (prev) => {
+    qc.setQueryData<ConversationsInfiniteData>(CONVERSATIONS_KEY, (prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        conversations: prev.conversations.map((c) =>
-          c.id === conversationId ? { ...c, unreadCount: 0 } : c,
-        ),
+        pages: prev.pages.map((page) => ({
+          ...page,
+          conversations: page.conversations.map((c) =>
+            c.id === conversationId ? { ...c, unreadCount: 0 } : c,
+          ),
+        })),
       };
     });
 

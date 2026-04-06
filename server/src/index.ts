@@ -23,9 +23,16 @@ import auditRoutes from "./routes/audit.js";
 import notificationsRoutes from "./routes/notifications.js";
 import conversationsRoutes from "./routes/messages.js";
 import blocksRoutes from "./routes/blocks.js";
+import uploadsRoutes from "./routes/uploads.js";
+import { globalLimiter, authLimiter, mutationLimiter } from "./middleware/rate-limit.js";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Trust one proxy hop (cloudflared). Required so req.ip resolves from
+// X-Forwarded-For in local dev; in production the keyGenerator in rate-limit.ts
+// uses CF-Connecting-IP directly and bypasses this.
+app.set("trust proxy", 1);
 
 const clientUrl = process.env.CLIENT_URL ?? "http://localhost:3000";
 
@@ -50,6 +57,21 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+// Rate limiting — applied before route registrations so every matched route
+// goes through the appropriate limiter.
+app.use("/api", globalLimiter);
+app.use("/api/auth", authLimiter);
+// mutationLimiter skips GET/HEAD so read traffic is only subject to globalLimiter
+app.use("/api/posts", mutationLimiter);
+app.use("/api/posts/:postId/comments", mutationLimiter);
+app.use("/api/events", mutationLimiter);
+app.use("/api/listings", mutationLimiter);
+app.use("/api/groups", mutationLimiter);
+app.use("/api/reports", mutationLimiter);
+app.use("/api/conversations", mutationLimiter);
+app.use("/api/blocks", mutationLimiter);
+app.use("/api/uploads", mutationLimiter);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", postsRoutes);
 app.use("/api/posts/:postId/comments", commentsRoutes);
@@ -63,6 +85,7 @@ app.use("/api/audit", auditRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/conversations", conversationsRoutes);
 app.use("/api/blocks", blocksRoutes);
+app.use("/api/uploads", uploadsRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });

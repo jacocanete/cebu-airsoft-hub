@@ -9,8 +9,18 @@ export function ListingCard({ listing }: { listing: MarketplaceListing }) {
       params={{ id: listing.id }}
       className="group flex flex-col border border-border bg-card transition-colors hover:border-primary/30 hover:bg-accent"
     >
-      <div className="aspect-[4/3] w-full bg-muted/30 flex items-center justify-center border-b border-border">
-        <span className="label-military text-muted-foreground/30">No image</span>
+      <div className="aspect-[4/3] w-full bg-muted/30 flex items-center justify-center border-b border-border overflow-hidden">
+        {listing.images[0] ? (
+          <img
+            src={listing.images[0]}
+            alt={listing.title}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <span className="label-military text-muted-foreground/30">No image</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-2 p-4 flex-1">

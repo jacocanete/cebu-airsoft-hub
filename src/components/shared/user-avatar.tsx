@@ -15,6 +15,7 @@ type AvatarSize = keyof typeof sizeClasses;
 interface UserAvatarProps {
   name: string;
   username?: string;
+  avatar?: string;
   size?: AvatarSize;
   linkToProfile?: boolean;
   className?: string;
@@ -22,13 +23,35 @@ interface UserAvatarProps {
 
 function AvatarBox({
   name,
+  avatar,
   size = "md",
   className,
 }: {
   name: string;
+  avatar?: string;
   size?: AvatarSize;
   className?: string;
 }) {
+  if (avatar) {
+    return (
+      <div
+        className={cn(
+          "shrink-0 overflow-hidden border border-border",
+          sizeClasses[size],
+          className,
+        )}
+      >
+        <img
+          src={avatar}
+          alt={name}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -45,6 +68,7 @@ function AvatarBox({
 export function UserAvatar({
   name,
   username,
+  avatar,
   size = "md",
   linkToProfile = false,
   className,
@@ -56,10 +80,10 @@ export function UserAvatar({
         params={{ username }}
         className="hover:opacity-80 transition-opacity"
       >
-        <AvatarBox name={name} size={size} className={className} />
+        <AvatarBox name={name} avatar={avatar} size={size} className={className} />
       </Link>
     );
   }
 
-  return <AvatarBox name={name} size={size} className={className} />;
+  return <AvatarBox name={name} avatar={avatar} size={size} className={className} />;
 }

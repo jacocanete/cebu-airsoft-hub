@@ -6,7 +6,8 @@ import { useCreatePost } from "@/hooks/use-posts";
 import { PostEditor } from "@/components/feed/post-editor";
 import { PollBuilder } from "@/components/feed/poll-builder";
 import { TagInput } from "@/components/feed/tag-input";
-import type { PollDraft } from "@/types";
+import { ImageUpload } from "@/components/shared/image-upload";
+import type { PollDraft, Upload } from "@/types";
 import { FORUM_CATEGORIES } from "@/lib/constants";
 import { BackLink } from "@/components/shared/back-link";
 import { PageHeader } from "@/components/shared/page-header";
@@ -31,6 +32,7 @@ function NewPostPage() {
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [images, setImages] = useState<Upload[]>([]);
   const [poll, setPoll] = useState<PollDraft | null>(null);
 
   const addPoll = () => {
@@ -58,6 +60,7 @@ function NewPostPage() {
         content: body.trim(),
         category,
         tags,
+        images: images.map((u) => u.url),
         ...(poll ? { poll } : {}),
       },
       {
@@ -97,6 +100,21 @@ function NewPostPage() {
         <div className="flex flex-col gap-1.5">
           <label className="label-military text-foreground">Body <span className="text-primary">*</span></label>
           <PostEditor value={body} onChange={setBody} placeholder="Write your post... Markdown is supported." minRows={12} />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="label-military text-foreground">
+            Images{" "}
+            <span className="text-muted-foreground font-normal normal-case tracking-normal text-xs">
+              (optional, up to 10)
+            </span>
+          </label>
+          <ImageUpload
+            context="POST_IMAGE"
+            maxFiles={10}
+            value={images}
+            onChange={setImages}
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">

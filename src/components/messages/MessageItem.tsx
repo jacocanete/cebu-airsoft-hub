@@ -76,11 +76,11 @@ export function MessageItem({ message, conversationId, isLast }: MessageItemProp
               {isLast && message.readAt && (
                 <CheckCheck className="h-3 w-3 text-primary" aria-label="Seen" />
               )}
-              {/* Delete button — visible on hover */}
+              {/* Always visible on touch (no hover), hover/focus-visible on desktop */}
               <button
                 onClick={() => deleteMessage(message.id)}
                 aria-label="Delete message"
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/60 hover:text-destructive"
+                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive"
               >
                 <Trash2 className="h-3 w-3" />
               </button>

@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../server/node_modules/.prisma/client"
 }
 
 datasource db {
@@ -49,6 +50,7 @@ model User {
   // Better Auth
   sessions Session[]
   accounts Account[]
+  uploads  Upload[]
 
   // Messaging
   conversationsAsP1 Conversation[] @relation("ConversationP1")
@@ -129,6 +131,7 @@ model Post {
   deletedByAuthor Boolean   @default(false)
   editedAt        DateTime?
 
+  images   String[]
   comments Comment[]
   votes    Vote[]
 }
@@ -524,4 +527,35 @@ model Notification {
   relatedId String?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Uploads
+
+enum UploadContext {
+  AVATAR
+  COVER_PHOTO
+  POST_IMAGE
+  LISTING_IMAGE
+  GROUP_LOGO
+  GROUP_BANNER
+}
+
+model Upload {
+  id         String        @id @default(cuid())
+  key        String        @unique
+  thumbKey   String?
+  url        String
+  thumbUrl   String?
+  filename   String
+  mimeType   String
+  size       Int
+  width      Int?
+  height     Int?
+  context    UploadContext
+  uploaderId String
+  uploader   User          @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  createdAt  DateTime      @default(now())
+
+  @@index([uploaderId, context])
+  @@index([context])
 }

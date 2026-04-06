@@ -7,6 +7,7 @@ import {
   Users,
   Flag,
 } from "lucide-react";
+import { MessageButton } from "@/components/shared/MessageButton";
 import { GAME_TYPE_COLORS, EVENT_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
 import { BackLink } from "@/components/shared/back-link";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -203,6 +204,15 @@ function EventDetailPage() {
                 </p>
               </div>
             </Link>
+            <div className="mt-3 pt-3 border-t border-border">
+              <MessageButton
+                recipientId={event.organizer.id}
+                recipientName={event.organizer.name}
+                contextType="EVENT"
+                contextId={event.id}
+                defaultMessage={`Hi! I have a question about "${event.title}".`}
+              />
+            </div>
           </div>
 
           <div className="border border-border bg-card p-4">
