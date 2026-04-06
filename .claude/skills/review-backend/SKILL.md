@@ -9,7 +9,7 @@ metadata:
 
 ## What I Do
 
-Run a comprehensive backend audit of the Detachment Reaper server code. This is Pass 6 of a 6-pass code quality review. I review all Express route handlers, Prisma queries, Zod validation, auth/security patterns, Socket.io event handlers, and error handling in `server/src/`.
+Run a comprehensive backend audit of the Cebu Airsoft Hub server code. This is Pass 6 of a 6-pass code quality review. I review all Express route handlers, Prisma queries, Zod validation, auth/security patterns, Socket.io event handlers, and error handling in `server/src/`.
 
 > **Before starting:** Load the `codebase-reference` skill to understand the backend's architecture, the Express route structure pattern, the auth middleware, Prisma models, and Socket.io room conventions. All findings must be grounded in that context.
 

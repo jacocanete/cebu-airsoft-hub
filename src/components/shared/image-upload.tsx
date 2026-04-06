@@ -35,7 +35,7 @@ function UploadThumbnail({
         type="button"
         onClick={onRemove}
         aria-label={`Remove ${upload.filename}`}
-        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black"
+        className="absolute right-1 top-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black focus-visible:opacity-100"
       >
         <X className="h-3 w-3" />
       </button>
@@ -190,7 +190,7 @@ export function ImageUpload({
                   ? "Click or drag to upload image"
                   : `Click or drag to upload (${value.length}/${maxFiles})`}
               </span>
-              <span className="text-[11px] text-muted-foreground/50">
+              <span className="text-[11px] text-muted-foreground">
                 JPEG, PNG, WebP, GIF — max 10 MB
               </span>
             </>

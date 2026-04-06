@@ -9,7 +9,7 @@ metadata:
 
 ## What I Do
 
-Run a comprehensive React patterns audit of the Detachment Reaper codebase. This is Pass 3 of a 6-pass code quality review. I find anti-patterns that cause unnecessary re-renders, incorrect state management, component boundary problems, and violations of canonical React best practices.
+Run a comprehensive React patterns audit of the Cebu Airsoft Hub codebase. This is Pass 3 of a 6-pass code quality review. I find anti-patterns that cause unnecessary re-renders, incorrect state management, component boundary problems, and violations of canonical React best practices.
 
 > **Before starting:** Load the `codebase-reference` skill to understand the project's component structure, data fetching patterns, and TanStack Router conventions. This project uses TanStack Router and React Query — there are no Server Components, no `"use client"` directives, and no Next.js patterns. All components are client-rendered.
 

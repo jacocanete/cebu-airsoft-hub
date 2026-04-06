@@ -14,7 +14,8 @@ export function FilterGroup({ label, options, value, onChange }: FilterGroupProp
           <button
             key={opt}
             onClick={() => onChange(opt)}
-            className={`rounded px-3 py-1.5 text-left text-xs font-semibold uppercase tracking-widest transition-colors ${
+            aria-pressed={value === opt}
+            className={`cursor-pointer rounded px-3 py-1.5 text-left text-xs font-semibold uppercase tracking-widest transition-colors ${
               value === opt
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"

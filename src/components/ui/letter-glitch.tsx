@@ -205,7 +205,7 @@ export function LetterGlitch({
 
   return (
     <div className={className} style={WRAPPER_STYLE}>
-      <canvas ref={canvasRef} style={CANVAS_STYLE} />
+      <canvas ref={canvasRef} style={CANVAS_STYLE} aria-hidden="true" role="presentation" />
       {outerVignette && <div style={OUTER_VIGNETTE_STYLE} />}
       {centerVignette && <div style={CENTER_VIGNETTE_STYLE} />}
     </div>

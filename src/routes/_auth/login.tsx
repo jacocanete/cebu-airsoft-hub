@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useLogin } from "@/hooks/use-auth";
 import { AuthHeader } from "@/components/shared/auth-header";
 
 export const Route = createFileRoute("/_auth/login")({
   head: () => ({
-    meta: [{ title: "Login | Detachment Reaper" }],
+    meta: [{ title: "Login | Cebu Airsoft Hub" }],
   }),
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: (search.redirect as string) || "",
@@ -20,6 +20,7 @@ function LoginPage() {
   const login = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,16 +78,26 @@ function LoginPage() {
                 Forgot?
               </button>
             </div>
-            <input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           {login.error && (

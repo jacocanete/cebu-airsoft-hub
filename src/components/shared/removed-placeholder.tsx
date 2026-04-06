@@ -23,7 +23,7 @@ export function RemovedPlaceholder({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-xs italic text-muted-foreground/50 ${className ?? ""}`}
+      className={`inline-flex items-center gap-1.5 text-xs italic text-muted-foreground ${className ?? ""}`}
     >
       <ShieldX className="h-3 w-3 shrink-0" aria-hidden />
       [removed by {who} · {formatRelativeTime(deletedAt)}]

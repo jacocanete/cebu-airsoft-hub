@@ -29,7 +29,7 @@ const MOCK_USERS = {
 export const MOCK_PROFILE = {
   name: "Ghost Reaper",
   username: "ghost_reaper",
-  bio: "MilSim player based in Cebu. Squad leader at Detachment Reaper. Running a Krytac + TM Hi-Capa combo. Let's play.",
+  bio: "MilSim player based in Cebu. Squad leader at Detachment Reaper. Running a Krytac + TM Hi-Capa combo. Let's play. (sample)",
   gearList: "Krytac Trident MK2 CRB | Tokyo Marui Hi-Capa 5.1 | Emerson G3 kit",
   playStyle: "MilSim / Assault",
   team: "Detachment Reaper",
@@ -44,7 +44,7 @@ export const MOCK_PROFILE = {
 export const MOCK_POSTS = [
   {
     id: "p0",
-    title: "Welcome to Detachment Reaper — Community Rules & Guidelines",
+    title: "Welcome to Cebu Airsoft Hub — Community Rules & Guidelines",
     category: "News",
     author: MOCK_USERS.ghost_reaper,
     upvotes: 312,
@@ -407,7 +407,7 @@ export const MOCK_EVENTS = [
     playerCap: 60,
     rsvpCount: 38,
     organizer: MOCK_USERS.ghost_reaper,
-    groupName: "Detachment Reaper",
+    groupName: "Cebu Airsoft Hub",
     status: "Upcoming",
   },
   {
@@ -480,7 +480,7 @@ export const MOCK_GROUPS = [
     id: "1",
     name: "Detachment Reaper",
     slug: "detachment-reaper",
-    description: "Cebu-based milsim unit. Discipline, teamwork, and fun. Est. 2019.",
+    description: "The founding group behind Cebu Airsoft Hub. Cebu-based milsim unit. Discipline, teamwork, and fun. Est. 2019.",
     memberCount: 42,
     gameCount: 28,
   },

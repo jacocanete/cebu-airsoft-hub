@@ -7,7 +7,7 @@ import { useConversations } from "@/hooks/use-messages";
 
 export const Route = createFileRoute("/_main/messages/")({
   head: () => ({
-    meta: [{ title: "Inbox | Detachment Reaper" }],
+    meta: [{ title: "Inbox | Cebu Airsoft Hub" }],
   }),
   component: InboxPage,
 });
@@ -38,7 +38,7 @@ function InboxPage() {
           <div className="flex flex-col items-center gap-3 py-16">
             <Mail className="h-10 w-10 text-muted-foreground/20" />
             <p className="text-sm text-muted-foreground">No messages yet.</p>
-            <p className="text-xs text-muted-foreground/60">
+            <p className="text-xs text-muted-foreground">
               Start a conversation from a user&apos;s profile or an event page.
             </p>
           </div>

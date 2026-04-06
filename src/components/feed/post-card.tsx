@@ -93,7 +93,7 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
               key={tag}
               to="/feed"
               search={{ tag, sort: "new", category: "All" }}
-              className="text-xs text-muted-foreground/60 hover:text-primary transition-colors"
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               #{tag}
@@ -135,16 +135,17 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
               <span>
                 {formatRelativeTime(post.createdAt)}
                 {post.editedAt && (
-                  <span className="italic ml-1 text-muted-foreground/40">· edited</span>
+                  <span className="italic ml-1 text-muted-foreground/70">· edited</span>
                 )}
               </span>
               <Link
                 to="/feed/$id"
                 params={{ id: post.id }}
+                aria-label={`${post.commentCount} comment${post.commentCount === 1 ? "" : "s"}`}
                 className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
               >
-                <MessageSquare className="h-3.5 w-3.5" />
-                {post.commentCount}
+                <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+                <span aria-hidden="true">{post.commentCount}</span>
               </Link>
             </div>
           </>
@@ -161,7 +162,7 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
             <div className="h-20 w-20 overflow-hidden border border-border bg-muted/20">
               <img
                 src={post.images[0]}
-                alt=""
+                alt={`${post.title} — post image`}
                 className="h-full w-full object-cover"
                 loading="lazy"
                 decoding="async"

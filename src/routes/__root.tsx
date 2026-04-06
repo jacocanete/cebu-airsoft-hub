@@ -39,7 +39,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         name: "viewport",
         content: "width=device-width, initial-scale=1",
       },
-      { title: "Detachment Reaper — Cebu Airsoft Community" },
+      { title: "Cebu Airsoft Hub" },
       {
         name: "description",
         content:

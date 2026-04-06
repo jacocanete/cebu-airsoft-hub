@@ -348,6 +348,7 @@ const updatePostSchema = z.object({
     )
     .max(8)
     .default([]),
+  images: z.array(z.string().url()).max(10).default([]),
 });
 
 router.patch("/:id", requireAuth, async (req: AuthRequest, res) => {
@@ -388,6 +389,7 @@ router.patch("/:id", requireAuth, async (req: AuthRequest, res) => {
       content: parsed.data.content,
       category: parsed.data.category,
       tags: parsed.data.tags,
+      images: parsed.data.images,
       editedAt: new Date(),
     },
     include: {

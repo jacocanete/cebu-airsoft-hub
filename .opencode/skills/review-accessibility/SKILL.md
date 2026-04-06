@@ -9,7 +9,7 @@ metadata:
 
 ## What I Do
 
-Run a comprehensive accessibility (a11y) audit of the Detachment Reaper codebase. This is Pass 5 of a 6-pass code quality review. I check every interactive element, form, image, and dynamic content region for WCAG 2.1 AA compliance.
+Run a comprehensive accessibility (a11y) audit of the Cebu Airsoft Hub codebase. This is Pass 5 of a 6-pass code quality review. I check every interactive element, form, image, and dynamic content region for WCAG 2.1 AA compliance.
 
 > **Before starting:** Load the `codebase-reference` skill to understand the project's tech stack, component library (`@base-ui/react`), and design conventions. The site is dark-mode first with small text — contrast checking is especially important.
 

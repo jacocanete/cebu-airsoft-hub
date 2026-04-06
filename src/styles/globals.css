@@ -103,7 +103,7 @@
   --secondary: oklch(0.16 0 0);          /* ~#1a1a1a */
   --secondary-foreground: oklch(0.92 0 0);
   --muted: oklch(0.16 0 0);
-  --muted-foreground: oklch(0.62 0 0);   /* ~#a9a9a9 */
+  --muted-foreground: oklch(0.66 0 0);   /* ~#b3b3b3 — raised from 0.62 for WCAG AA on card bg */
   --accent: oklch(0.18 0 0);             /* ~#1f1f1f hover state */
   --accent-foreground: oklch(0.92 0 0);
   --destructive: oklch(0.52 0.27 25);    /* slightly brighter red on dark */

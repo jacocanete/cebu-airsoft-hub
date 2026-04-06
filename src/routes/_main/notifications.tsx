@@ -9,7 +9,7 @@ import type { Notification, NotificationType } from "@/types";
 
 export const Route = createFileRoute("/_main/notifications")({
   head: () => ({
-    meta: [{ title: "Notifications | Detachment Reaper" }],
+    meta: [{ title: "Notifications | Cebu Airsoft Hub" }],
   }),
   component: NotificationsPage,
 });
@@ -62,7 +62,7 @@ function NotifRow({ notif }: { notif: Notification }) {
         )}>
           {notif.message}
         </p>
-        <p className="text-xs text-muted-foreground/60 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {formatRelativeTime(notif.createdAt)}
         </p>
       </div>

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
   MarketplaceListing,
@@ -34,13 +34,15 @@ export function useListings(filters?: ListingFilters) {
   });
 }
 
-export function useListingDetail(id: string) {
-  return useQuery<MarketplaceListingDetail>({
-    queryKey: ["listings", id],
-    queryFn: () => api.get(`/api/listings/${id}`),
-    enabled: !!id,
+export const listingDetailQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ["listings", id] as const,
+    queryFn: () => api.get<MarketplaceListingDetail>(`/api/listings/${id}`),
     staleTime: 60 * 1000,
   });
+
+export function useListingDetail(id: string) {
+  return useSuspenseQuery(listingDetailQueryOptions(id));
 }
 
 export function useSellerReviews(listingId: string) {

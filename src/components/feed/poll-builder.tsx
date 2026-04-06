@@ -57,8 +57,9 @@ export function PollBuilder({ value, onChange, onRemove }: PollBuilderProps) {
 
       {/* Question */}
       <div className="flex flex-col gap-1.5">
-        <label className="label-military text-foreground">Question</label>
+        <label htmlFor="poll-question" className="label-military text-foreground">Question</label>
         <input
+          id="poll-question"
           type="text"
           value={value.question}
           onChange={(e) => update({ question: e.target.value })}
@@ -69,22 +70,25 @@ export function PollBuilder({ value, onChange, onRemove }: PollBuilderProps) {
 
       {/* Options */}
       <div className="flex flex-col gap-2">
-        <label className="label-military text-foreground">Options</label>
+        <p className="label-military text-foreground">Options</p>
         {value.options.map((opt, i) => (
           <div key={opt.id} className="flex items-center gap-2">
-            <span className="label-military text-muted-foreground/50 w-4 text-center">{i + 1}</span>
+            <span className="label-military text-muted-foreground w-4 text-center" aria-hidden="true">{i + 1}</span>
             <input
+              id={`poll-option-${opt.id}`}
               type="text"
               value={opt.text}
               onChange={(e) => updateOption(opt.id, e.target.value)}
               placeholder={`Option ${i + 1}`}
+              aria-label={`Poll option ${i + 1}`}
               className="flex-1 h-9 rounded border border-border bg-background px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
             />
             <button
               type="button"
               onClick={() => removeOption(opt.id)}
               disabled={value.options.length <= 2}
-              className="text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors"
+              aria-label={`Remove option ${i + 1}`}
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center text-muted-foreground hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -94,7 +98,7 @@ export function PollBuilder({ value, onChange, onRemove }: PollBuilderProps) {
           <button
             type="button"
             onClick={addOption}
-            className="flex items-center gap-1.5 self-start label-military text-primary hover:text-primary/80 transition-colors mt-1"
+            className="flex cursor-pointer items-center gap-1.5 self-start label-military text-primary hover:text-primary/80 transition-colors mt-1"
           >
             <Plus className="h-3.5 w-3.5" />
             Add option
@@ -111,7 +115,7 @@ export function PollBuilder({ value, onChange, onRemove }: PollBuilderProps) {
             role="switch"
             aria-checked={value.multiSelect}
             onClick={() => update({ multiSelect: !value.multiSelect })}
-            className={`relative h-5 w-9 rounded-full transition-colors ${
+            className={`relative h-5 w-9 cursor-pointer rounded-full transition-colors ${
               value.multiSelect ? "bg-primary" : "bg-muted"
             }`}
           >

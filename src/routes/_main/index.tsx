@@ -6,7 +6,7 @@ import { CtaBanner } from "@/components/landing/cta-banner";
 
 export const Route = createFileRoute("/_main/")({
   head: () => ({
-    meta: [{ title: "Detachment Reaper — Cebu Airsoft Community" }],
+    meta: [{ title: "Cebu Airsoft Hub — Cebu's Home for Airsoft" }],
   }),
   component: HomePage,
 });

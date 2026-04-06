@@ -1,8 +1,10 @@
 import { useCallback, useEffect } from "react";
 import {
+  queryOptions,
   useInfiniteQuery,
   useMutation,
   useQuery,
+  useSuspenseQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -123,12 +125,15 @@ export function useConversations() {
 // useConversation — single conversation detail
 // ---------------------------------------------------------------------------
 
-export function useConversation(id: string) {
-  return useQuery<ConversationDetail>({
-    queryKey: ["conversation", id],
+export const conversationQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ["conversation", id] as const,
     queryFn: () => api.get<ConversationDetail>(`/api/conversations/${id}`),
     staleTime: 5 * 60_000,
   });
+
+export function useConversation(id: string) {
+  return useSuspenseQuery(conversationQueryOptions(id));
 }
 
 // ---------------------------------------------------------------------------

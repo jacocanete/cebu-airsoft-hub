@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_main/modlog")({
   head: () => ({
-    meta: [{ title: "Mod Log | Detachment Reaper" }],
+    meta: [{ title: "Mod Log | Cebu Airsoft Hub" }],
   }),
   component: ModlogPage,
 });
@@ -73,7 +73,7 @@ function AuditRow({ entry }: { entry: AuditLogEntry }) {
             <span className="text-muted-foreground"> — {entry.reason}</span>
           )}
         </p>
-        <p className="text-xs text-muted-foreground/60 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {formatRelativeTime(entry.createdAt)}
         </p>
       </div>

@@ -15,7 +15,7 @@ const CONDITION_OPTIONS = [
 import type { Upload } from "@/types";
 
 export const Route = createFileRoute("/_main/marketplace/new")({
-  head: () => ({ meta: [{ title: "Sell an Item | Detachment Reaper" }] }),
+  head: () => ({ meta: [{ title: "Sell an Item | Cebu Airsoft Hub" }] }),
   beforeLoad: ({ context, location }) => {
     if (!context.session?.user) {
       throw redirect({
@@ -111,7 +111,7 @@ function NewListingPage() {
             placeholder="e.g. Tokyo Marui MWS GBBR — excellent condition"
             className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
           />
-          <p className="text-[11px] text-muted-foreground/40 text-right">{title.length}/200</p>
+          <p className="text-[11px] text-muted-foreground text-right">{title.length}/200</p>
         </div>
 
         {/* Condition + Category row */}

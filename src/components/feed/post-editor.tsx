@@ -6,7 +6,6 @@ import {
   Bold,
   Italic,
   Link2,
-  Image,
   Code,
   Quote,
   List,
@@ -18,6 +17,7 @@ interface PostEditorProps {
   onChange: (val: string) => void;
   placeholder?: string;
   minRows?: number;
+  id?: string;
 }
 
 interface ToolbarButton {
@@ -41,11 +41,6 @@ const TOOLBAR: ToolbarButton[] = [
     icon: Link2,
     label: "Link",
     action: (s) => ({ text: `[${s || "link text"}](url)`, offset: s ? 0 : 1 }),
-  },
-  {
-    icon: Image,
-    label: "Image",
-    action: (s) => ({ text: `![${s || "alt text"}](image-url)`, offset: s ? 0 : 2 }),
   },
   {
     icon: Code,
@@ -74,6 +69,7 @@ export function PostEditor({
   onChange,
   placeholder = "Write your post... (Markdown supported)",
   minRows = 10,
+  id,
 }: PostEditorProps) {
   const [tab, setTab] = useState<"write" | "preview">("write");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -100,11 +96,15 @@ export function PostEditor({
   return (
     <div className="flex flex-col border border-border bg-background">
       {/* Tabs */}
-      <div className="flex border-b border-border">
+      <div role="tablist" aria-label="Editor mode" className="flex border-b border-border">
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === "write"}
+          aria-controls="editor-write-panel"
+          id="editor-write-tab"
           onClick={() => setTab("write")}
-          className={`px-4 py-2 text-xs font-semibold uppercase tracking-widest transition-colors ${
+          className={`cursor-pointer px-4 py-2 text-xs font-semibold uppercase tracking-widest transition-colors ${
             tab === "write"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
@@ -114,8 +114,12 @@ export function PostEditor({
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === "preview"}
+          aria-controls="editor-preview-panel"
+          id="editor-preview-tab"
           onClick={() => setTab("preview")}
-          className={`px-4 py-2 text-xs font-semibold uppercase tracking-widest transition-colors ${
+          className={`cursor-pointer px-4 py-2 text-xs font-semibold uppercase tracking-widest transition-colors ${
             tab === "preview"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
@@ -135,8 +139,9 @@ export function PostEditor({
                 key={btn.label}
                 type="button"
                 title={btn.label}
+                aria-label={btn.label}
                 onClick={() => insertMarkdown(btn)}
-                className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                className="inline-flex min-h-9 min-w-9 cursor-pointer items-center justify-center rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
                 <Icon className="h-3.5 w-3.5" />
               </button>
@@ -149,14 +154,22 @@ export function PostEditor({
       {tab === "write" ? (
         <textarea
           ref={textareaRef}
+          id={id ?? "editor-write-panel"}
+          role="tabpanel"
+          aria-labelledby="editor-write-tab"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={minRows}
-          className="w-full bg-transparent px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground resize-y font-mono leading-relaxed"
+          className="w-full bg-transparent px-4 py-3 text-sm text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground resize-y font-mono leading-relaxed"
         />
       ) : (
-        <div className="min-h-[200px] px-4 py-3">
+        <div
+          id="editor-preview-panel"
+          role="tabpanel"
+          aria-labelledby="editor-preview-tab"
+          className="min-h-[200px] px-4 py-3"
+        >
           {value.trim() ? (
             <div className={PROSE_CLASSES}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
@@ -170,7 +183,7 @@ export function PostEditor({
       {/* Footer hint */}
       {tab === "write" && (
         <div className="border-t border-border px-4 py-1.5">
-          <p className="text-[11px] text-muted-foreground/50">
+          <p className="text-[11px] text-muted-foreground">
             Markdown supported · **bold** · *italic* · `code` · &gt; quote
           </p>
         </div>

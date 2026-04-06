@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import {
+  queryOptions,
   useInfiniteQuery,
   useMutation,
-  useQuery,
+  useSuspenseQuery,
   useQueryClient,
   type InfiniteData,
   type QueryClient,
@@ -81,6 +82,22 @@ export function usePostsInfinite(filters?: PostFilters) {
   });
 }
 
+// Shared query options used by both the route loader (ensureQueryData) and the
+// component hook (useSuspenseQuery). Keeping them in one place guarantees both
+// always resolve to the same cache entry, preventing hydration mismatches.
+export const postDetailQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ["posts", id] as const,
+    queryFn: () => api.get<PostDetail>(`/api/posts/${id}`),
+    staleTime: 30 * 1000,
+    select: (post: PostDetail) => ({
+      ...post,
+      upvotes: post.votes.filter((v) => v.value === 1).length,
+      downvotes: post.votes.filter((v) => v.value === -1).length,
+      commentCount: post._count.comments,
+    }),
+  });
+
 export function usePostDetail(id: string) {
   const qc = useQueryClient();
 
@@ -136,18 +153,10 @@ export function usePostDetail(id: string) {
     };
   }, [id, qc]);
 
-  return useQuery<PostDetail>({
-    queryKey: ["posts", id],
-    queryFn: () => api.get<PostDetail>(`/api/posts/${id}`),
-    enabled: !!id,
-    staleTime: 30 * 1000,
-    select: (post) => ({
-      ...post,
-      upvotes: post.votes.filter((v) => v.value === 1).length,
-      downvotes: post.votes.filter((v) => v.value === -1).length,
-      commentCount: post._count.comments,
-    }),
-  });
+  // useSuspenseQuery never returns isLoading:true — if the loader seeded the
+  // cache the data is available synchronously on both server and client,
+  // eliminating the skeleton-vs-content hydration mismatch.
+  return useSuspenseQuery(postDetailQueryOptions(id));
 }
 
 export function useUpdatePost(postId: string) {
@@ -158,6 +167,7 @@ export function useUpdatePost(postId: string) {
       content: string;
       category: string;
       tags: string[];
+      images?: string[];
     }) => api.patch<PostDetail>(`/api/posts/${postId}`, data),
     onSuccess: (updated) => {
       // Overwrite the detail cache with the server's authoritative response

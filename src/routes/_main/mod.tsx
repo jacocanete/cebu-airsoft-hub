@@ -26,7 +26,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_main/mod")({
   head: () => ({
-    meta: [{ title: "Mod Dashboard | Detachment Reaper" }],
+    meta: [{ title: "Mod Dashboard | Cebu Airsoft Hub" }],
   }),
   beforeLoad: ({ context }) => {
     if (!isMod(context.session?.user)) {
@@ -135,7 +135,7 @@ function ReportRow({ report }: { report: Report }) {
       )}
 
       {report.resolvedBy && (
-        <p className="text-xs text-muted-foreground/60">
+        <p className="text-xs text-muted-foreground">
           Resolved by u/{report.resolvedBy.username}
           {report.resolutionNote && ` — "${report.resolutionNote}"`}
         </p>
@@ -192,7 +192,7 @@ function AuditRow({ entry }: { entry: AuditLogEntry }) {
             </span>
           )}
         </p>
-        <p className="text-xs text-muted-foreground/60 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {formatRelativeTime(entry.createdAt)}
         </p>
       </div>

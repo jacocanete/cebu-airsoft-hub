@@ -7,7 +7,7 @@ import { useGroups } from "@/hooks/use-groups";
 
 export const Route = createFileRoute("/_main/groups/")({
   head: () => ({
-    meta: [{ title: "Groups | Detachment Reaper" }],
+    meta: [{ title: "Groups | Cebu Airsoft Hub" }],
   }),
   component: GroupsPage,
 });

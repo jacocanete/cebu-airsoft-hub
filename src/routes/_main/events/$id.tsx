@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   CalendarDays,
@@ -12,30 +13,32 @@ import { GAME_TYPE_COLORS, EVENT_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/con
 import { BackLink } from "@/components/shared/back-link";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
-import { useEventDetail, useRsvp } from "@/hooks/use-events";
+import { useEventDetail, useRsvp, eventDetailQueryOptions } from "@/hooks/use-events";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import { ShareButton } from "@/components/shared/share-button";
+import { ReportDialog } from "@/components/shared/report-dialog";
+import { queryClient } from "@/lib/query-client";
 
 export const Route = createFileRoute("/_main/events/$id")({
+  loader: ({ params }) =>
+    queryClient.ensureQueryData(eventDetailQueryOptions(params.id)),
+  pendingComponent: () => (
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <SkeletonCard />
+    </div>
+  ),
   head: () => ({
-    meta: [{ title: "Event | Detachment Reaper" }],
+    meta: [{ title: "Event | Cebu Airsoft Hub" }],
   }),
   component: EventDetailPage,
 });
 
 function EventDetailPage() {
   const { id } = Route.useParams();
-  const { data: event, isLoading } = useEventDetail(id);
+  const { data: event } = useEventDetail(id);
   const rsvp = useRsvp();
   const requireAuth = useRequireAuth();
-
-  if (isLoading || !event) {
-    return (
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <SkeletonCard />
-      </div>
-    );
-  }
+  const [reportOpen, setReportOpen] = useState(false);
 
   const playerCap = event.playerCap ?? 0;
   const rsvpPercent =
@@ -110,10 +113,21 @@ function EventDetailPage() {
 
             <div className="flex items-center gap-2 pt-4 mt-4 border-t border-border flex-wrap">
               <ShareButton />
-              <button className="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 label-military text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
-                <Flag className="h-3.5 w-3.5" />
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-border px-3 py-1.5 label-military text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Flag className="h-3.5 w-3.5" aria-hidden="true" />
                 Report
               </button>
+              <ReportDialog
+                open={reportOpen}
+                onOpenChange={setReportOpen}
+                targetType="EVENT"
+                targetId={id}
+                targetLabel="event"
+              />
             </div>
           </div>
 
@@ -199,7 +213,7 @@ function EventDetailPage() {
                 <p className="text-sm font-bold text-foreground">
                   {event.organizer.name}
                 </p>
-                <p className="label-military text-muted-foreground/60">
+                <p className="label-military text-muted-foreground">
                   u/{event.organizer.username}
                 </p>
               </div>

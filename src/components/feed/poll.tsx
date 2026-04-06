@@ -82,6 +82,14 @@ export function Poll({ poll }: PollProps) {
         </span>
       </div>
 
+      {/* Live region announces result changes to screen readers */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {showResults && `Poll results: ${poll.options.map((o) => {
+          const pct = Math.round((o.votes / (totalVotes || 1)) * 100);
+          return `${o.text} ${pct}%`;
+        }).join(", ")}`}
+      </div>
+
       <div className="flex flex-col gap-2 mb-4">
         {poll.options.map((option) => {
           const pct = showResults
@@ -97,6 +105,7 @@ export function Poll({ poll }: PollProps) {
               type="button"
               onClick={() => handleSelect(option.id)}
               disabled={showResults || !canVote || pollVote.isPending}
+              aria-pressed={!showResults ? isSelected : undefined}
               className={`relative w-full text-left rounded border overflow-hidden transition-colors ${
                 isSelected && !showResults
                   ? "border-primary bg-primary/10"
@@ -149,7 +158,7 @@ export function Poll({ poll }: PollProps) {
 
       {/* Footer */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <p className="label-military text-muted-foreground/60">
+        <p className="label-military text-muted-foreground">
           {totalVotes} {totalVotes === 1 ? "vote" : "votes"}
           {poll.multiSelect && " · Multiple choice"}
           {poll.expiresAt && ` · Closes ${formatRelativeTime(poll.expiresAt)}`}

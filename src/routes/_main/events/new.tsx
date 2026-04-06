@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_main/events/new")({
-  head: () => ({ meta: [{ title: "Host a Game | Detachment Reaper" }] }),
+  head: () => ({ meta: [{ title: "Host a Game | Cebu Airsoft Hub" }] }),
   beforeLoad: ({ context, location }) => {
     if (!context.session?.user) {
       throw redirect({

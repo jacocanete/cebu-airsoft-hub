@@ -48,7 +48,7 @@ export function ConversationCard({ conversation, isActive }: ConversationCardPro
             {conversation.participant.name}
           </p>
           {conversation.lastMessageAt && (
-            <span className="shrink-0 text-xs text-muted-foreground/60">
+            <span className="shrink-0 text-xs text-muted-foreground">
               {formatRelativeTime(conversation.lastMessageAt)}
             </span>
           )}

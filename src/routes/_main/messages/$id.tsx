@@ -10,9 +10,10 @@ import { SkeletonList } from "@/components/shared/skeleton-list";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { MessageItem } from "@/components/messages/MessageItem";
 import { MessageInput } from "@/components/messages/MessageInput";
-import { useConversation, useMessages, useMarkConversationRead } from "@/hooks/use-messages";
+import { useConversation, useMessages, useMarkConversationRead, conversationQueryOptions } from "@/hooks/use-messages";
 import { useBlockUser, useUnblockUser, useIsBlocked } from "@/hooks/use-blocks";
 import { useCurrentUser } from "@/hooks/use-auth";
+import { queryClient } from "@/lib/query-client";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -23,8 +24,15 @@ import {
 import { MoreHorizontal } from "lucide-react";
 
 export const Route = createFileRoute("/_main/messages/$id")({
+  loader: ({ params }) =>
+    queryClient.ensureQueryData(conversationQueryOptions(params.id)),
+  pendingComponent: () => (
+    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <SkeletonList count={3} height="h-10" />
+    </div>
+  ),
   head: () => ({
-    meta: [{ title: "Message | Detachment Reaper" }],
+    meta: [{ title: "Message | Cebu Airsoft Hub" }],
   }),
   component: ThreadPage,
 });
@@ -32,13 +40,13 @@ export const Route = createFileRoute("/_main/messages/$id")({
 function ThreadPage() {
   const { id } = Route.useParams();
   const { data: session } = useCurrentUser();
-  const { data: conversation, isLoading: convLoading } = useConversation(id);
+  const { data: conversation } = useConversation(id);
   const { data: messagesData, isLoading: msgsLoading, fetchNextPage, hasNextPage } =
     useMessages(id);
   const { markRead } = useMarkConversationRead(id);
   const { mutate: blockUser } = useBlockUser();
   const { mutate: unblockUser } = useUnblockUser();
-  const isBlocked = useIsBlocked(conversation?.participant.id);
+  const isBlocked = useIsBlocked(conversation.participant.id);
   const bottomRef = useRef<HTMLDivElement>(null);
   const didMarkRead = useRef(false);
 
@@ -59,22 +67,6 @@ function ThreadPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [allMessages.length]);
-
-  if (convLoading) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-        <SkeletonList count={3} height="h-10" />
-      </div>
-    );
-  }
-
-  if (!conversation) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-        <p className="text-sm text-muted-foreground">Conversation not found.</p>
-      </div>
-    );
-  }
 
   return (
     <div

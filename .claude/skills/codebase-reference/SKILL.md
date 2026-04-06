@@ -1,6 +1,6 @@
 ---
 name: codebase-reference
-description: Living reference document for the Detachment Reaper codebase — tech stack, directory structure, conventions, design system, and data fetching patterns. All review skills refer to this document for project-specific context.
+description: Living reference document for the Cebu Airsoft Hub codebase — tech stack, directory structure, conventions, design system, and data fetching patterns. All review skills refer to this document for project-specific context.
 license: MIT
 metadata:
   category: reference
@@ -8,7 +8,7 @@ metadata:
 
 ## Project Overview
 
-**Name:** Detachment Reaper
+**Name:** Cebu Airsoft Hub
 **Purpose:** Community platform for airsoft players in Cebu, Philippines. Three pillars: Discussion (forum), Marketplace (buy/sell gear), and Matchmaking (game events).
 **Status:** Backend fully implemented (Express + Prisma + Better Auth). Frontend wired to real API via React Query. Some routes still transitioning from mock data to live data.
 
@@ -195,7 +195,7 @@ await api.delete("/api/posts/123")
 import { createFileRoute } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/_main/feed/")({
-  head: () => ({ meta: [{ title: "Feed — Detachment Reaper" }] }),
+  head: () => ({ meta: [{ title: "Feed — Cebu Airsoft Hub" }] }),
   component: FeedPage,
 })
 

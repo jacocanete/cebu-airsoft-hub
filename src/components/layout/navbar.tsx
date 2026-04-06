@@ -46,13 +46,13 @@ export function Navbar() {
         <Link to="/" className="flex items-center gap-2.5 shrink-0">
           <img
             src="/logo.png"
-            alt="Detachment Reaper"
+            alt="Cebu Airsoft Hub"
             width={32}
             height={32}
             className="h-8 w-auto"
           />
           <span className="hidden font-bold tracking-tight text-foreground sm:inline">
-            Detachment Reaper
+            Cebu Airsoft Hub
           </span>
         </Link>
 
@@ -80,11 +80,11 @@ export function Navbar() {
               <Link
                 to="/messages"
                 aria-label={unreadMessageCount > 0 ? `${unreadMessageCount} unread messages` : "Messages"}
-                className="relative flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                className="relative flex h-11 w-11 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
                 <Mail className="h-4 w-4" />
                 {unreadMessageCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                  <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
                     {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
                   </span>
                 )}
@@ -92,11 +92,11 @@ export function Navbar() {
               <Link
                 to="/notifications"
                 aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
-                className="relative flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                className="relative flex h-11 w-11 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
                 <Bell className="h-4 w-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                  <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
@@ -200,12 +200,12 @@ export function Navbar() {
                 >
                   <img
                     src="/logo.png"
-                    alt="Detachment Reaper"
+                    alt="Cebu Airsoft Hub"
                     width={32}
                     height={32}
                     className="h-8 w-auto"
                   />
-                  Detachment Reaper
+                  Cebu Airsoft Hub
                 </Link>
 
                 {/* Search in mobile drawer */}

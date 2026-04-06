@@ -5,8 +5,9 @@ import remarkGfm from "remark-gfm";
 import { Flag } from "lucide-react";
 import { CONDITION_COLORS, LISTING_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
 import { PROSE_CLASSES } from "@/lib/prose";
-import { useListingDetail } from "@/hooks/use-marketplace";
+import { useListingDetail, listingDetailQueryOptions } from "@/hooks/use-marketplace";
 import { useCurrentUser } from "@/hooks/use-auth";
+import { queryClient } from "@/lib/query-client";
 import { BackLink } from "@/components/shared/back-link";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
 import { ShareButton } from "@/components/shared/share-button";
@@ -17,24 +18,22 @@ import { SellerReviewSection } from "@/components/marketplace/seller-review-sect
 import { RelatedListings } from "@/components/marketplace/related-listings";
 
 export const Route = createFileRoute("/_main/marketplace/$id")({
-  head: () => ({ meta: [{ title: "Listing | Detachment Reaper" }] }),
+  loader: ({ params }) =>
+    queryClient.ensureQueryData(listingDetailQueryOptions(params.id)),
+  pendingComponent: () => (
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <SkeletonCard height="h-[600px]" />
+    </div>
+  ),
+  head: () => ({ meta: [{ title: "Listing | Cebu Airsoft Hub" }] }),
   component: ListingDetailPage,
 });
 
 function ListingDetailPage() {
   const { id } = Route.useParams();
   const { data: session } = useCurrentUser();
-  const { data: listing, isLoading } = useListingDetail(id);
+  const { data: listing } = useListingDetail(id);
   const [reportOpen, setReportOpen] = useState(false);
-
-  // All hooks must be called before any early return
-  if (isLoading || !listing) {
-    return (
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <SkeletonCard height="h-[600px]" />
-      </div>
-    );
-  }
 
   const isOwner = session?.user?.id === listing.seller.id;
 
@@ -80,7 +79,7 @@ function ListingDetailPage() {
               ₱{Number(listing.price).toLocaleString()}
             </p>
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground" suppressHydrationWarning>
               Listed{" "}
               {new Date(listing.createdAt).toLocaleDateString("en-US", {
                 month: "long",

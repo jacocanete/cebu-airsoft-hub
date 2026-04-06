@@ -19,10 +19,10 @@ function MainLayout() {
         <footer className="border-t border-border bg-card py-6">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 flex flex-col items-center gap-1">
             <p className="label-military">
-              Detachment Reaper &mdash; Cebu Airsoft Community
+              Cebu Airsoft Hub
             </p>
             <p className="text-xs text-muted-foreground/50">
-              Lock in. Gear up. Play.
+              A Detachment Reaper project &mdash; Lock in. Gear up. Play.
             </p>
           </div>
         </footer>

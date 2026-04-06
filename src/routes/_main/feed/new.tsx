@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/shared/page-header";
 
 export const Route = createFileRoute("/_main/feed/new")({
   head: () => ({
-    meta: [{ title: "Create Post | Detachment Reaper" }],
+    meta: [{ title: "Create Post | Cebu Airsoft Hub" }],
   }),
   beforeLoad: ({ context, location }) => {
     if (!context.session?.user) {
@@ -86,7 +86,7 @@ function NewPostPage() {
         <div className="flex flex-col gap-1.5">
           <label className="label-military text-foreground" htmlFor="title">Title <span className="text-primary">*</span></label>
           <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Write a descriptive title..." maxLength={200} className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground" />
-          <p className="text-[11px] text-muted-foreground/40 text-right">{title.length}/200</p>
+          <p className="text-[11px] text-muted-foreground text-right">{title.length}/200</p>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -98,8 +98,8 @@ function NewPostPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="label-military text-foreground">Body <span className="text-primary">*</span></label>
-          <PostEditor value={body} onChange={setBody} placeholder="Write your post... Markdown is supported." minRows={12} />
+          <label htmlFor="post-body" className="label-military text-foreground">Body <span className="text-primary">*</span></label>
+          <PostEditor id="post-body" value={body} onChange={setBody} placeholder="Write your post... Markdown is supported." minRows={12} />
         </div>
 
         <div className="flex flex-col gap-1.5">

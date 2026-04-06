@@ -148,7 +148,7 @@ function WriteReviewForm({
 
       <div className="mb-3">
         <label htmlFor="review-comment" className="text-xs text-muted-foreground block mb-1.5">
-          Comment <span className="text-muted-foreground/60">(optional)</span>
+          Comment <span className="text-muted-foreground">(optional)</span>
         </label>
         <textarea
           id="review-comment"

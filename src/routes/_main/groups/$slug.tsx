@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_main/groups/$slug")({
-  head: () => ({ meta: [{ title: "Group | Detachment Reaper" }] }),
+  head: () => ({ meta: [{ title: "Group | Cebu Airsoft Hub" }] }),
   component: GroupProfilePage,
 });
 

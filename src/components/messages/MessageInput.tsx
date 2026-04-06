@@ -48,7 +48,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
         onKeyDown={handleKeyDown}
         placeholder="Write a message… (Enter to send, Shift+Enter for new line)"
         rows={1}
-        className="flex-1 resize-none rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        className="flex-1 resize-none rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         style={{ minHeight: "2.25rem", maxHeight: "7.5rem" }}
         disabled={isPending}
       />

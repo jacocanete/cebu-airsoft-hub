@@ -9,7 +9,7 @@ metadata:
 
 ## What I Do
 
-Run a comprehensive structural hygiene audit of the Detachment Reaper codebase. This is Pass 1 of a 6-pass code quality review. I examine every file for structural issues that affect maintainability, readability, and adherence to project conventions.
+Run a comprehensive structural hygiene audit of the Cebu Airsoft Hub codebase. This is Pass 1 of a 6-pass code quality review. I examine every file for structural issues that affect maintainability, readability, and adherence to project conventions.
 
 > **Before starting:** Load the `codebase-reference` skill to understand the project's tech stack, directory conventions, naming rules, and patterns. All findings must be grounded in that context.
 

@@ -37,7 +37,7 @@ export function Hero() {
             </h1>
 
             <p className="text-base text-muted-foreground leading-relaxed mb-8 max-w-md">
-              Discuss, buy, sell, and play. Detachment Reaper is the community
+              Discuss, buy, sell, and play. Cebu Airsoft Hub is the community
               hub for airsoft players in Cebu — find games near you, gear up
               from fellow players, and connect with your team.
             </p>
@@ -74,7 +74,7 @@ export function Hero() {
 
             <div className="absolute inset-0 flex items-center justify-center z-10">
               <CircularText
-                text="Detachment Reaper - Cebu Airsoft Community - "
+                text="Cebu Airsoft Hub - Cebu Airsoft Community - "
                 spinDuration={22}
                 onHover="speedUp"
                 radius={130}
@@ -85,7 +85,7 @@ export function Hero() {
 
             <img
               src="/hero-logo.png"
-              alt="Detachment Reaper"
+              alt="Cebu Airsoft Hub"
               width={560}
               height={560}
               className="h-[560px] w-auto object-contain drop-shadow-[0_0_48px_oklch(0.45_0.27_25_/_0.5)] pointer-events-none relative z-20"

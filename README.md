@@ -1,6 +1,6 @@
-# Detachment Reaper
+# Cebu Airsoft Hub
 
-Community platform for the Cebu airsoft scene. Forum, marketplace, and game matchmaking — all in one place.
+Community platform for the Cebu airsoft scene. Forum, marketplace, and game matchmaking — all in one place. A Detachment Reaper project.
 
 ## Stack
 
@@ -29,7 +29,7 @@ Community platform for the Cebu airsoft scene. Forum, marketplace, and game matc
 ```bash
 # 1. Clone and install frontend dependencies
 git clone <repo-url>
-cd detachment-reaper
+cd cebu-airsoft-hub
 npm install
 
 # 2. Install API dependencies
@@ -66,7 +66,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Variable | Description | Default |
 |---|---|---|
-| `DATABASE_URL` | Postgres connection string | `postgresql://reaper:reaper@localhost:5432/detachment_reaper` |
+| `DATABASE_URL` | Postgres connection string | `postgresql://cebuairsoft:cebuairsoft@localhost:5432/cebu_airsoft_hub` |
 | `BETTER_AUTH_SECRET` | Long random secret for session signing | — must set — |
 | `BETTER_AUTH_URL` | Public URL of the API | `http://localhost:3001` |
 | `CLIENT_URL` | Public URL of the frontend | `http://localhost:3000` |
@@ -76,7 +76,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ### Project structure
 
 ```
-detachment-reaper/
+cebu-airsoft-hub/
 ├── prisma/
 │   ├── schema.prisma       # Database schema
 │   └── seed.ts             # Dev seed data

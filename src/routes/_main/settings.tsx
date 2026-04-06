@@ -7,7 +7,7 @@ import { ImageUpload } from "@/components/shared/image-upload";
 import type { Upload } from "@/types";
 
 export const Route = createFileRoute("/_main/settings")({
-  head: () => ({ meta: [{ title: "Settings | Detachment Reaper" }] }),
+  head: () => ({ meta: [{ title: "Settings | Cebu Airsoft Hub" }] }),
   beforeLoad: ({ context, location }) => {
     if (!context.session?.user) {
       throw redirect({
@@ -150,7 +150,7 @@ function SettingsPage() {
                 placeholder="Tell the community about yourself…"
                 className="w-full resize-none rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
               />
-              <p className="text-[11px] text-muted-foreground/40 text-right mt-0.5">
+              <p className="text-[11px] text-muted-foreground text-right mt-0.5">
                 {bio.length}/500
               </p>
             </div>

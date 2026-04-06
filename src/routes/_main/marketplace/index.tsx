@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_main/marketplace/")({
     middlewares: [stripSearchParams(DEFAULT_MARKETPLACE_SEARCH)],
   },
   head: () => ({
-    meta: [{ title: "Marketplace | Detachment Reaper" }],
+    meta: [{ title: "Marketplace | Cebu Airsoft Hub" }],
   }),
   component: MarketplacePage,
 });

@@ -64,7 +64,7 @@ export function MessageItem({ message, conversationId, isLast }: MessageItemProp
 
         <div
           className={cn(
-            "mt-1 flex items-center gap-1.5 text-xs text-muted-foreground/60",
+            "mt-1 flex items-center gap-1.5 text-xs text-muted-foreground",
             isMine && "flex-row-reverse",
           )}
         >

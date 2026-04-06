@@ -9,7 +9,7 @@ metadata:
 
 ## What I Do
 
-Run a comprehensive performance audit of the Detachment Reaper codebase. This is Pass 4 of a 6-pass code quality review. I find bundle size issues, image optimization gaps, expensive client-side computations, and unnecessary network waterfalls.
+Run a comprehensive performance audit of the Cebu Airsoft Hub codebase. This is Pass 4 of a 6-pass code quality review. I find bundle size issues, image optimization gaps, expensive client-side computations, and unnecessary network waterfalls.
 
 > **Before starting:** Load the `codebase-reference` skill to understand the project's tech stack, data fetching approach, and key component patterns. This project uses Vite, React Query, and TanStack Router — there is no Next.js, no `next/dynamic`, no `next/image`, and no Server Components.
 
@@ -71,7 +71,7 @@ This project uses raw `<img>` tags, not `next/image`. Check every `<img>` elemen
 <!-- Pattern for hero/above-the-fold images -->
 <img
   src="/path/to/hero.png"
-  alt="Detachment Reaper"
+  alt="Cebu Airsoft Hub"
   width="800"
   height="600"
   loading="eager"

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryClient } from "@/lib/query-client";
+import { postDetailQueryOptions } from "@/hooks/use-posts";
 import { Flag, Pin, Lock } from "lucide-react";
 import { ShareButton } from "@/components/shared/share-button";
 import { CommentThread } from "@/components/feed/comment-thread";
@@ -26,6 +27,10 @@ import { useRemovePost, useRestorePost, usePinPost, useLockPost, useDeletePost }
 import { ReportDialog } from "@/components/shared/report-dialog";
 import { ContentActionsMenu } from "@/components/shared/content-actions-menu";
 import { RemovedPlaceholder } from "@/components/shared/removed-placeholder";
+import { ImageLightbox } from "@/components/shared/image-lightbox";
+import { PostImageSlider } from "@/components/shared/post-image-slider";
+import { ImageUpload } from "@/components/shared/image-upload";
+import type { Upload } from "@/types";
 import { isMod } from "@/lib/roles";
 import type { PollData, PostDetail } from "@/types";
 import { formatRelativeTime } from "@/lib/format-time";
@@ -53,25 +58,24 @@ function normalizePoll(poll: NonNullable<PostDetail["poll"]>): PollData {
 
 
 export const Route = createFileRoute("/_main/feed/$id")({
-  loader: async ({ params }) => {
-    // Prefetch into the React Query cache so PostPage's usePostDetail() hits
-    // cached data — no extra network round-trip.
-    const post = await queryClient.ensureQueryData<PostDetail>({
-      queryKey: ["posts", params.id],
-      queryFn: () =>
-        import("@/lib/api").then(({ api }) =>
-          api.get<PostDetail>(`/api/posts/${params.id}`),
-        ),
-    });
-    return { post };
-  },
+  // ensureQueryData seeds the React Query cache before the component mounts.
+  // useSuspenseQuery in usePostDetail then reads from cache synchronously on
+  // both server and client, so there is never a loading state that could
+  // cause a hydration mismatch.
+  loader: ({ params }) =>
+    queryClient.ensureQueryData(postDetailQueryOptions(params.id)),
+  pendingComponent: () => (
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <SkeletonCard />
+    </div>
+  ),
   head: ({ loaderData }) => {
-    const post = loaderData?.post;
+    const post = loaderData as PostDetail | undefined;
     if (!post) {
-      return { meta: [{ title: "Post | Detachment Reaper" }] };
+      return { meta: [{ title: "Post | Cebu Airsoft Hub" }] };
     }
 
-    const title = `${post.title} — Detachment Reaper`;
+    const title = `${post.title} — Cebu Airsoft Hub`;
     const excerpt = post.deletedAt
       ? ""
       : stripMarkdown(post.content).slice(0, 200) +
@@ -84,7 +88,7 @@ export const Route = createFileRoute("/_main/feed/$id")({
         { property: "og:title", content: post.title },
         ...(excerpt ? [{ property: "og:description", content: excerpt }] : []),
         { property: "og:type", content: "article" },
-        { property: "og:site_name", content: "Detachment Reaper" },
+        { property: "og:site_name", content: "Cebu Airsoft Hub" },
         { property: "article:author", content: `u/${post.author.username}` },
         { name: "twitter:card", content: "summary" },
         { name: "twitter:title", content: post.title },
@@ -98,7 +102,7 @@ export const Route = createFileRoute("/_main/feed/$id")({
 function PostPage() {
   const { id } = Route.useParams();
   usePostRoom(id);
-  const { data: post, isLoading } = usePostDetail(id);
+  const { data: post } = usePostDetail(id);
   const [commentSort, setCommentSort] = useState<CommentSort>("best");
   const { data: comments = [] } = useComments(id, commentSort);
   const createComment = useCreateComment();
@@ -106,11 +110,14 @@ function PostPage() {
   const { data: session } = useCurrentUser();
   const [commentText, setCommentText] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editTags, setEditTags] = useState<string[]>([]);
+  const [editImages, setEditImages] = useState<Upload[]>([]);
 
   // Pinned new comments — client-side only, resets on navigation
   const [pinnedNewIds, setPinnedNewIds] = useState<string[]>([]);
@@ -159,14 +166,6 @@ function PostPage() {
     }
     newCommentIdRef.current = null;
   }, [comments]);
-
-  if (isLoading || !post) {
-    return (
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <SkeletonCard />
-      </div>
-    );
-  }
 
   const user = session?.user ?? null;
   const upvotes = post.upvotes ?? 0;
@@ -226,7 +225,7 @@ function PostPage() {
                     key={tag}
                     to="/feed"
                     search={{ tag, sort: "new", category: "All" }}
-                    className="text-xs text-muted-foreground/60 hover:text-primary transition-colors"
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
                   >
                     #{tag}
                   </Link>
@@ -243,10 +242,27 @@ function PostPage() {
                   targetLabel="post"
                   onEdit={() => {
                     setEditTitle(post.title);
-                    setEditContent(post.content);
-                    setEditCategory(post.category);
-                    setEditTags([...post.tags]);
-                    setIsEditing(true);
+                     setEditContent(post.content);
+                     setEditCategory(post.category);
+                     setEditTags([...post.tags]);
+                     setEditImages(
+                       (post.images ?? []).map((url) => ({
+                         id: url,
+                         key: url,
+                         thumbKey: null,
+                         url,
+                         thumbUrl: null,
+                         filename: "",
+                         mimeType: "image/webp",
+                         size: 0,
+                         width: null,
+                         height: null,
+                         context: "POST_IMAGE" as const,
+                         uploaderId: post.author.id,
+                         createdAt: post.createdAt,
+                       })),
+                     );
+                     setIsEditing(true);
                   }}
                   onDelete={() => deletePost.mutate()}
                   onRemove={(reason) => removePost.mutate(reason)}
@@ -269,21 +285,37 @@ function PostPage() {
                   onChange={(e) => setEditTitle(e.target.value)}
                   maxLength={200}
                   placeholder="Title"
+                  aria-label="Post title"
                   className="h-10 w-full rounded border border-border bg-background px-3 text-base font-bold text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
                 />
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
+                  aria-label="Post category"
                   className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1"
                 >
                   {FORUM_CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-                <PostEditor value={editContent} onChange={setEditContent} minRows={8} />
+                <PostEditor id="edit-post-body" value={editContent} onChange={setEditContent} minRows={8} />
                 <div className="flex flex-col gap-1.5">
                   <label className="label-military text-foreground">Tags</label>
                   <TagInput tags={editTags} onChange={setEditTags} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="label-military text-foreground">
+                    Images{" "}
+                    <span className="text-muted-foreground font-normal normal-case tracking-normal text-xs">
+                      (optional, up to 10)
+                    </span>
+                  </label>
+                  <ImageUpload
+                    context="POST_IMAGE"
+                    maxFiles={10}
+                    value={editImages}
+                    onChange={setEditImages}
+                  />
                 </div>
                 <div className="flex gap-2 justify-end border-t border-border pt-4">
                   <button
@@ -298,7 +330,13 @@ function PostPage() {
                     disabled={updatePost.isPending || !editTitle.trim() || !editContent.trim()}
                     onClick={() =>
                       updatePost.mutate(
-                        { title: editTitle, content: editContent, category: editCategory, tags: editTags },
+                        {
+                          title: editTitle,
+                          content: editContent,
+                          category: editCategory,
+                          tags: editTags,
+                          images: editImages.map((u) => u.url),
+                        },
                         { onSuccess: () => setIsEditing(false) },
                       )
                     }
@@ -332,14 +370,15 @@ function PostPage() {
                         {post.author.name}
                       </Link>
                     </div>
-                    <p className="label-military text-muted-foreground/60">
+                    <p className="label-military text-muted-foreground" suppressHydrationWarning>
                       u/{post.author.username} · {formatRelativeTime(post.createdAt)}
                       {post.editedAt && (
-                        <span className="italic ml-1 text-muted-foreground/40">
+                        <span className="italic ml-1 text-muted-foreground/70" suppressHydrationWarning>
                           · edited {formatRelativeTime(post.editedAt)}
                         </span>
                       )}
                     </p>
+
                   </div>
                 </div>
 
@@ -353,26 +392,29 @@ function PostPage() {
                   </div>
                 ) : (
                   <>
+                    {post.images && post.images.length > 0 && (
+                      <>
+                        <div className="pt-4">
+                          <PostImageSlider
+                            images={post.images}
+                            alt={post.title}
+                            onImageClick={(i) => { setLightboxIndex(i); setLightboxOpen(true); }}
+                          />
+                        </div>
+                        <ImageLightbox
+                          images={post.images}
+                          initialIndex={lightboxIndex}
+                          open={lightboxOpen}
+                          onOpenChange={setLightboxOpen}
+                          alt={post.title}
+                        />
+                      </>
+                    )}
                     <div className={`py-4 ${PROSE_CLASSES}`}>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {post.content}
                       </ReactMarkdown>
                     </div>
-                    {post.images && post.images.length > 0 && (
-                      <div className={`grid gap-1.5 pb-4 ${post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-                        {post.images.map((src, i) => (
-                          <div key={i} className="overflow-hidden border border-border bg-muted/10">
-                            <img
-                              src={src}
-                              alt={`Image ${i + 1}`}
-                              className="w-full object-cover"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </>
                 )}
               </>
@@ -415,12 +457,13 @@ function PostPage() {
                 <AnimatedCount value={commentCount} />
                 Comments
               </p>
-              <div className="flex gap-0.5">
+              <div role="group" aria-label="Sort comments" className="flex gap-0.5">
                 {(["best", "top", "new", "old"] as const).map((s) => (
                   <button
                     key={s}
                     onClick={() => setCommentSort(s)}
-                    className={`rounded px-2.5 py-1 label-military transition-colors ${
+                    aria-pressed={commentSort === s}
+                    className={`cursor-pointer rounded px-2.5 py-1 label-military transition-colors ${
                       commentSort === s
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -443,6 +486,7 @@ function PostPage() {
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Write a comment..."
+                  aria-label="Write a comment"
                   className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground resize-none"
                 />
                 <div className="flex items-center justify-end">
@@ -488,7 +532,7 @@ function PostPage() {
                 <p className="text-sm font-bold text-foreground">
                   {post.author.name}
                 </p>
-                <p className="label-military text-muted-foreground/60">
+                <p className="label-military text-muted-foreground">
                   u/{post.author.username}
                 </p>
               </div>

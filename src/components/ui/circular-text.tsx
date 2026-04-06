@@ -104,6 +104,7 @@ export function CircularText({
 
   return (
     <motion.div
+      aria-hidden="true"
       className={`relative cursor-pointer select-none ${className}`}
       style={{
         width: size,

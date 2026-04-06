@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { OptimizedImage } from "@/components/shared/optimized-image";
+import { queryClient } from "@/lib/query-client";
 import { useUserMedia } from "@/hooks/use-uploads";
+import { ImageLightbox } from "@/components/shared/image-lightbox";
 import {
   Shield,
   CalendarDays,
@@ -18,7 +19,7 @@ import { MessageButton } from "@/components/shared/MessageButton";
 import { toast } from "sonner";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
-import { useUserProfile, useUserPosts } from "@/hooks/use-users";
+import { useUserProfile, useUserPosts, userProfileQueryOptions } from "@/hooks/use-users";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useBanUser, useUnbanUser, useChangeRole } from "@/hooks/use-ban";
 import { useModNotes, useAddModNote } from "@/hooks/use-mod-notes";
@@ -42,8 +43,15 @@ const HERO_STYLE: CSSProperties = {
 };
 
 export const Route = createFileRoute("/_main/profile/$username")({
+  loader: ({ params }) =>
+    queryClient.ensureQueryData(userProfileQueryOptions(params.username)),
+  pendingComponent: () => (
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <SkeletonCard />
+    </div>
+  ),
   head: () => ({
-    meta: [{ title: "Profile | Detachment Reaper" }],
+    meta: [{ title: "Profile | Cebu Airsoft Hub" }],
   }),
   component: ProfilePage,
 });
@@ -96,10 +104,11 @@ function BanDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="label-military text-foreground mb-1.5 block">
+            <label htmlFor="ban-reason" className="label-military text-foreground mb-1.5 block">
               Reason (required)
             </label>
             <textarea
+              id="ban-reason"
               autoFocus
               rows={3}
               value={reason}
@@ -111,17 +120,18 @@ function BanDialog({
             />
           </div>
           <div>
-            <label className="label-military text-foreground mb-1.5 block">
+            <p className="label-military text-foreground mb-1.5" id="ban-duration-label">
               Duration
-            </label>
-            <div className="flex gap-1">
+            </p>
+            <div role="group" aria-labelledby="ban-duration-label" className="flex gap-1">
               {([["1", "1 day"], ["7", "7 days"], ["30", "30 days"], ["permanent", "Permanent"]] as const).map(
                 ([value, label]) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setDuration(value)}
-                    className={`rounded px-3 py-1.5 label-military transition-colors ${
+                    aria-pressed={duration === value}
+                    className={`cursor-pointer rounded px-3 py-1.5 label-military transition-colors ${
                       duration === value
                         ? "bg-primary text-primary-foreground"
                         : "border border-border text-muted-foreground hover:bg-accent"
@@ -190,7 +200,7 @@ function ModNotesPanel({ username }: { username: string }) {
           {notes.map((note) => (
             <div key={note.id} className="text-xs border-l-2 border-amber-500/40 pl-2">
               <p className="text-foreground/80">{note.content}</p>
-              <p className="text-muted-foreground/60 mt-0.5">
+              <p className="text-muted-foreground mt-0.5" suppressHydrationWarning>
                 u/{note.author.username} · {formatRelativeTime(note.createdAt)}
               </p>
             </div>
@@ -203,6 +213,7 @@ function ModNotesPanel({ username }: { username: string }) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Add a mod note..."
+          aria-label="Add a mod note"
           maxLength={500}
           className="flex-1 h-8 rounded border border-border bg-background px-2 text-xs text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
         />
@@ -228,27 +239,20 @@ function ProfilePage() {
   const { data: session } = useCurrentUser();
   const viewer = session?.user ?? null;
 
-  const { data: user, isLoading } = useUserProfile(username);
+  const { data: user } = useUserProfile(username);
   const { data: posts = [] } = useUserPosts(username);
   const { data: media = [] } = useUserMedia(username);
   const [tab, setTab] = useState<Tab>("Posts");
+  const [mediaLightboxOpen, setMediaLightboxOpen] = useState(false);
+  const [mediaLightboxIndex, setMediaLightboxIndex] = useState(0);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
 
   const unban = useUnbanUser(username);
   const changeRole = useChangeRole(username);
 
-  // All hooks must be called before early return
   const viewerIsMod = isMod(viewer);
   const viewerIsAdmin = isAdmin(viewer);
   const isOwnProfile = viewer?.id === user?.id;
-
-  if (isLoading || !user) {
-    return (
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <SkeletonCard />
-      </div>
-    );
-  }
 
   const primaryGroup = user.memberships[0]?.group ?? null;
   const recentPosts = posts.slice(0, 5);
@@ -289,7 +293,7 @@ function ProfilePage() {
       {/* Ban banner */}
       {isBanned && (
         <div className="border-b border-red-500/40 bg-red-500/10 px-4 py-3 text-center">
-          <p className="text-xs font-semibold text-red-400">
+          <p className="text-xs font-semibold text-red-400" suppressHydrationWarning>
             This account is banned
             {activeBan.expiresAt
               ? ` until ${formatRelativeTime(activeBan.expiresAt)}`
@@ -334,7 +338,7 @@ function ProfilePage() {
                   {user.playStyle}
                 </span>
               )}
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1" suppressHydrationWarning>
                 <CalendarDays className="h-3 w-3" />
                 Joined {new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
               </span>
@@ -358,7 +362,7 @@ function ProfilePage() {
                 <button
                   onClick={handleUnban}
                   disabled={unban.isPending}
-                  className="inline-flex items-center gap-1.5 rounded border border-emerald-500/40 px-3 py-1.5 label-military text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-60"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-emerald-500/40 px-3 py-1.5 label-military text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Lift Ban
@@ -366,7 +370,7 @@ function ProfilePage() {
               ) : (
                 <button
                   onClick={() => setBanDialogOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded border border-red-500/40 px-3 py-1.5 label-military text-red-400 hover:bg-red-500/10 transition-colors"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-red-500/40 px-3 py-1.5 label-military text-red-400 hover:bg-red-500/10 transition-colors"
                 >
                   <ShieldBan className="h-3.5 w-3.5" />
                   Ban
@@ -407,12 +411,16 @@ function ProfilePage() {
             )}
 
             <div className="border border-border bg-card">
-              <div className="flex border-b border-border">
+              <div role="tablist" aria-label="Profile sections" className="flex border-b border-border">
                 {TABS.map((t) => (
                   <button
                     key={t}
+                    role="tab"
+                    aria-selected={tab === t}
+                    aria-controls={`profile-tab-panel-${t}`}
+                    id={`profile-tab-${t}`}
                     onClick={() => setTab(t)}
-                    className={`flex-1 py-3 text-center text-xs font-semibold uppercase tracking-widest transition-colors ${
+                    className={`flex-1 cursor-pointer py-3 text-center text-xs font-semibold uppercase tracking-widest transition-colors ${
                       tab === t
                         ? "border-b-2 border-primary text-primary"
                         : "text-muted-foreground hover:text-foreground"
@@ -423,13 +431,18 @@ function ProfilePage() {
                 ))}
               </div>
 
-              <div className="flex flex-col divide-y divide-border">
+              <div
+                id={`profile-tab-panel-${tab}`}
+                role="tabpanel"
+                aria-labelledby={`profile-tab-${tab}`}
+                className="flex flex-col divide-y divide-border"
+              >
                 {tab === "Posts" && recentPosts.map((post) => (
                   <div
                     key={post.id}
                     className="flex items-start gap-3 p-4 transition-colors hover:bg-accent"
                   >
-                    <div className="flex flex-col items-center gap-0.5 pt-0.5 shrink-0">
+                    <div className="flex flex-col items-center gap-0.5 pt-0.5 shrink-0" aria-hidden="true">
                       <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-xs font-bold text-foreground">
                         {post._count.votes}
@@ -445,10 +458,10 @@ function ProfilePage() {
                       </Link>
                       <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                         <span>{post.category}</span>
-                        <span>{formatRelativeTime(post.createdAt)}</span>
+                        <span suppressHydrationWarning>{formatRelativeTime(post.createdAt)}</span>
                         <span className="inline-flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" />
-                          {post._count.comments}
+                          <MessageSquare className="h-3 w-3" aria-hidden="true" />
+                          <span aria-label={`${post._count.comments} comments`}>{post._count.comments}</span>
                         </span>
                       </div>
                     </div>
@@ -460,19 +473,34 @@ function ProfilePage() {
                       No media uploads yet.
                     </p>
                   ) : (
-                    <div className="columns-2 sm:columns-3 gap-1 p-2">
-                      {media.map((upload) => (
-                        <div key={upload.id} className="mb-1 break-inside-avoid overflow-hidden">
-                          <OptimizedImage
-                            src={upload.url}
-                            thumbSrc={upload.thumbUrl}
-                            alt={upload.context}
-                            aspectRatio=""
-                            className="w-full"
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <>
+                      <div className="columns-2 sm:columns-3 gap-1 p-2">
+                        {media.map((upload, i) => (
+                          <button
+                            key={upload.id}
+                            type="button"
+                            onClick={() => { setMediaLightboxIndex(i); setMediaLightboxOpen(true); }}
+                            aria-label={`View image ${i + 1}`}
+                            className="mb-1 block w-full break-inside-avoid overflow-hidden group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          >
+                            <img
+                              src={upload.thumbUrl ?? upload.url}
+                              alt=""
+                              className="w-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      <ImageLightbox
+                        images={media.map((u) => u.url)}
+                        initialIndex={mediaLightboxIndex}
+                        open={mediaLightboxOpen}
+                        onOpenChange={setMediaLightboxOpen}
+                        alt="Media"
+                      />
+                    </>
                   )
                 )}
                 {(tab === "Comments" || tab === "Listings") && (

@@ -49,7 +49,7 @@ export function VoteControl({
         aria-label="Upvote"
         aria-pressed={userVote === 1}
         disabled={isPending}
-        className={`rounded p-0.5 transition-colors disabled:cursor-not-allowed ${
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded cursor-pointer transition-colors disabled:cursor-not-allowed ${
           userVote === 1
             ? "text-primary"
             : "text-muted-foreground hover:text-primary"
@@ -62,10 +62,13 @@ export function VoteControl({
         />
       </button>
 
-      <AnimatedCount
-        value={score}
-        className={`text-xs font-bold min-w-[1.25rem] text-center tabular-nums ${scoreColor}`}
-      />
+      <span aria-hidden="true">
+        <AnimatedCount
+          value={score}
+          className={`text-xs font-bold min-w-[1.25rem] text-center tabular-nums ${scoreColor}`}
+        />
+      </span>
+      <span className="sr-only">score: {score}</span>
 
       <button
         onClick={(e) => {
@@ -75,7 +78,7 @@ export function VoteControl({
         aria-label="Downvote"
         aria-pressed={userVote === -1}
         disabled={isPending}
-        className={`rounded p-0.5 transition-colors disabled:cursor-not-allowed ${
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded cursor-pointer transition-colors disabled:cursor-not-allowed ${
           userVote === -1
             ? "text-destructive"
             : "text-muted-foreground hover:text-destructive"

@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_main/events/")({
     middlewares: [stripSearchParams(DEFAULT_EVENTS_SEARCH)],
   },
   head: () => ({
-    meta: [{ title: "Events | Detachment Reaper" }],
+    meta: [{ title: "Events | Cebu Airsoft Hub" }],
   }),
   component: EventsPage,
 });

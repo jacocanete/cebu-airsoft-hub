@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_main/groups/new")({
-  head: () => ({ meta: [{ title: "Register a Group | Detachment Reaper" }] }),
+  head: () => ({ meta: [{ title: "Register a Group | Cebu Airsoft Hub" }] }),
   beforeLoad: ({ context, location }) => {
     if (!context.session?.user) {
       throw redirect({

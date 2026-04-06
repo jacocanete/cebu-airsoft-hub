@@ -11,7 +11,7 @@ export function AuthHeader({ title, subtitle }: AuthHeaderProps) {
       <Link to="/" className="inline-block mb-6">
         <img
           src="/hero-logo.png"
-          alt="Detachment Reaper"
+          alt="Cebu Airsoft Hub"
           width={64}
           height={64}
           className="h-16 w-16 mx-auto"

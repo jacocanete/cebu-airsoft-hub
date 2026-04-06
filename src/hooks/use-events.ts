@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { api } from "@/lib/api";
 import { socket } from "@/lib/socket";
@@ -11,6 +11,13 @@ export function useEventsList() {
     staleTime: 60 * 1000,
   });
 }
+
+export const eventDetailQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ["events", id] as const,
+    queryFn: () => api.get<GameEvent>(`/api/events/${id}`),
+    staleTime: 30 * 1000,
+  });
 
 export function useEventDetail(id: string) {
   const qc = useQueryClient();
@@ -35,12 +42,7 @@ export function useEventDetail(id: string) {
     };
   }, [id, qc]);
 
-  return useQuery<GameEvent>({
-    queryKey: ["events", id],
-    queryFn: () => api.get<GameEvent>(`/api/events/${id}`),
-    enabled: !!id,
-    staleTime: 30 * 1000,
-  });
+  return useSuspenseQuery(eventDetailQueryOptions(id));
 }
 
 export function useRsvp() {

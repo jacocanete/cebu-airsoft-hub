@@ -9,7 +9,7 @@ metadata:
 
 ## What I Do
 
-Run a comprehensive DRY (Don't Repeat Yourself) audit of the Detachment Reaper codebase. This is Pass 2 of a 6-pass code quality review. I find every instance of duplicated logic, repeated patterns, redundant types, scattered constants, and duplicated validation that should be extracted into shared utilities, hooks, components, or modules.
+Run a comprehensive DRY (Don't Repeat Yourself) audit of the Cebu Airsoft Hub codebase. This is Pass 2 of a 6-pass code quality review. I find every instance of duplicated logic, repeated patterns, redundant types, scattered constants, and duplicated validation that should be extracted into shared utilities, hooks, components, or modules.
 
 > **Before starting:** Load the `codebase-reference` skill to understand the project's tech stack, directory conventions, and patterns. All findings should be grounded in that context.
 

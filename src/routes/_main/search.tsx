@@ -49,7 +49,7 @@ export const Route = createFileRoute("/_main/search")({
     middlewares: [stripSearchParams(DEFAULT_SEARCH)],
   },
   head: () => ({
-    meta: [{ title: "Search | Detachment Reaper" }],
+    meta: [{ title: "Search | Cebu Airsoft Hub" }],
   }),
   component: SearchPage,
 });

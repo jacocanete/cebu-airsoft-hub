@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useRegister } from "@/hooks/use-auth";
 import { AuthHeader } from "@/components/shared/auth-header";
 
 export const Route = createFileRoute("/_auth/register")({
   head: () => ({
-    meta: [{ title: "Register | Detachment Reaper" }],
+    meta: [{ title: "Register | Cebu Airsoft Hub" }],
   }),
   component: RegisterPage,
 });
@@ -20,6 +20,8 @@ function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,16 +107,26 @@ function RegisterPage() {
             >
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           <div>
@@ -124,16 +136,26 @@ function RegisterPage() {
             >
               Confirm password
             </label>
-            <input
-              id="confirm-password"
-              type="password"
-              placeholder="••••••••"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                id="confirm-password"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             {passwordError && (
               <p className="mt-1 text-xs text-red-400">{passwordError}</p>
             )}

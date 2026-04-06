@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Mail } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-auth";
+import { useRequireAuth } from "@/hooks/use-require-auth";
 import { useCreateConversation } from "@/hooks/use-messages";
 import { useIsBlocked } from "@/hooks/use-blocks";
 import { ApiError } from "@/lib/api";
@@ -30,6 +31,7 @@ export function MessageButton({
 }: MessageButtonProps) {
   const navigate = useNavigate();
   const { data: session } = useCurrentUser();
+  const requireAuth = useRequireAuth();
   const { mutate: createConversation, isPending } = useCreateConversation();
   const isBlocked = useIsBlocked(recipientId);
 
@@ -48,8 +50,8 @@ export function MessageButton({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [showPrompt]);
 
-  // Don't render for unauthenticated users, own profile, or blocked users
-  if (!session?.user || session.user.id === recipientId || isBlocked) {
+  // Don't render for own profile or blocked users
+  if (session?.user?.id === recipientId || isBlocked) {
     return null;
   }
 
@@ -81,7 +83,7 @@ export function MessageButton({
   return (
     <>
       <button
-        onClick={() => setShowPrompt(true)}
+        onClick={() => requireAuth(() => setShowPrompt(true))}
         disabled={isPending}
         aria-label={`Message ${recipientName}`}
         className={buttonClasses}

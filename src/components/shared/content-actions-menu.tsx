@@ -75,7 +75,7 @@ export function ContentActionsMenu({
         <DropdownMenuTrigger asChild>
           <button
             aria-label="More actions"
-            className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>

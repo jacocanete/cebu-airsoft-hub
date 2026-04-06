@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_main/feed/")({
     middlewares: [stripSearchParams(DEFAULT_FEED_SEARCH)],
   },
   head: () => ({
-    meta: [{ title: "Forum | Detachment Reaper" }],
+    meta: [{ title: "Forum | Cebu Airsoft Hub" }],
   }),
   component: FeedPage,
 });

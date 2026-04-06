@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useRegister } from "@/hooks/use-auth";
 
 interface SignupFormProps {
@@ -14,6 +14,8 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,17 +98,27 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
         >
           Password
         </label>
-        <input
-          id="signup-password"
-          type="password"
-          placeholder="••••••••"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={8}
-          className="h-10 w-full rounded border border-border bg-background px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            id="signup-password"
+            type={showPassword ? "text" : "password"}
+            placeholder="••••••••"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            className="h-10 w-full rounded border border-border bg-background px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       <div>
@@ -116,16 +128,26 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
         >
           Confirm password
         </label>
-        <input
-          id="signup-confirm-password"
-          type="password"
-          placeholder="••••••••"
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          className="h-10 w-full rounded border border-border bg-background px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            id="signup-confirm-password"
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="••••••••"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            className="h-10 w-full rounded border border-border bg-background px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword((v) => !v)}
+            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
         {passwordError && (
           <p className="mt-1 text-xs text-red-400">{passwordError}</p>
         )}

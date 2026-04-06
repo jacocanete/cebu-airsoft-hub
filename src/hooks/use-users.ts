@@ -1,14 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { UserProfile, UserPost } from "@/types";
 
-export function useUserProfile(username: string) {
-  return useQuery<UserProfile>({
-    queryKey: ["users", username],
+export const userProfileQueryOptions = (username: string) =>
+  queryOptions({
+    queryKey: ["users", username] as const,
     queryFn: () => api.get<UserProfile>(`/api/users/${username}`),
-    enabled: !!username,
     staleTime: 60 * 1000,
   });
+
+export function useUserProfile(username: string) {
+  return useSuspenseQuery(userProfileQueryOptions(username));
 }
 
 export function useUserPosts(username: string) {

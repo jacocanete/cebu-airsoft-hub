@@ -1,4 +1,4 @@
-# Detachment Reaper — Cebu Airsoft Community Platform
+# Cebu Airsoft Hub — Cebu Airsoft Community Platform
 
 A niche social platform for the Cebu airsoft community. Three core pillars: **Discussion**, **Marketplace**, and **Matchmaking/Events**.
 
@@ -123,7 +123,7 @@ A niche social platform for the Cebu airsoft community. Three core pillars: **Di
 ## Project Structure
 
 ```
-detachment-reaper/
+cebu-airsoft-hub/
 ├── docker-compose.yml           # Postgres + API + Web
 ├── prisma/
 │   ├── schema.prisma            # Full database schema
