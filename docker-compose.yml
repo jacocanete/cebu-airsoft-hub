@@ -45,50 +45,6 @@ services:
       exit 0
       "
 
-  api:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
-    volumes:
-      - ./server/src:/app/src
-      - ./prisma:/app/prisma
-    depends_on:
-      db:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
-    environment:
-      DATABASE_URL: postgresql://reaper:reaper@db:5432/detachment_reaper
-      BETTER_AUTH_SECRET: changeme-in-production
-      BETTER_AUTH_URL: http://localhost:3001
-      CLIENT_URL: http://localhost:3000
-      PORT: "3001"
-      R2_ENDPOINT: http://minio:9000
-      R2_PRESIGN_URL: http://localhost:9000
-      R2_ACCESS_KEY_ID: minioadmin
-      R2_SECRET_ACCESS_KEY: minioadmin
-      R2_BUCKET_NAME: detachment-reaper
-      R2_PUBLIC_URL: http://localhost:9000/detachment-reaper
-    env_file:
-      - .env
-
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./src:/app/src
-    depends_on:
-      - api
-    environment:
-      VITE_API_URL: http://localhost:3001
-    env_file:
-      - .env
-
 volumes:
   pgdata:
   minio_data:

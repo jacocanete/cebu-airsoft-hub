@@ -12,9 +12,8 @@ RUN npm run build
 
 FROM node:22-alpine
 WORKDIR /app
-COPY --from=builder /app/package*.json ./
-RUN npm ci --omit=dev
-COPY --from=builder /app/.output ./.output
+RUN npm install -g serve
+COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
-CMD ["node", ".output/server/index.mjs"]
+CMD ["serve", "-s", "dist", "-l", "3000"]

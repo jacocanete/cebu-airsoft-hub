@@ -4,7 +4,14 @@ import { toast } from "sonner";
 import { useCreateListing } from "@/hooks/use-marketplace";
 import { ImageUpload } from "@/components/shared/image-upload";
 import { BackLink } from "@/components/shared/back-link";
-import { MARKETPLACE_CATEGORIES, CONDITIONS } from "@/lib/constants";
+import { MARKETPLACE_CATEGORIES } from "@/lib/constants";
+
+const CONDITION_OPTIONS = [
+  { value: "NEW", label: "New" },
+  { value: "LIKE_NEW", label: "Like New" },
+  { value: "USED", label: "Used" },
+  { value: "FOR_PARTS", label: "For Parts" },
+] as const;
 import type { Upload } from "@/types";
 
 export const Route = createFileRoute("/_main/marketplace/new")({
@@ -55,8 +62,10 @@ function NewListingPage() {
           toast.success("Listing created");
           navigate({ to: "/marketplace/$id", params: { id } });
         },
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Failed to create listing"),
+        onError: (err) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          toast.error(msg || "Failed to create listing");
+        },
       },
     );
   }
@@ -118,8 +127,8 @@ function NewListingPage() {
               className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1"
             >
               <option value="">Select condition…</option>
-              {CONDITIONS.map((c) => (
-                <option key={c} value={c}>{c.replace("_", " ")}</option>
+              {CONDITION_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
               ))}
             </select>
           </div>
