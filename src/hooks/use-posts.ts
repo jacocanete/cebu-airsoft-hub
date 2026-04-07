@@ -78,7 +78,7 @@ export function usePostsInfinite(filters?: PostFilters) {
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    staleTime: 30 * 1000,
+    // Omitting staleTime — falls through to STALE.SHORT global default.
   });
 }
 
@@ -89,7 +89,7 @@ export const postDetailQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ["posts", id] as const,
     queryFn: () => api.get<PostDetail>(`/api/posts/${id}`),
-    staleTime: 30 * 1000,
+    // Omitting staleTime — falls through to STALE.SHORT global default.
     select: (post: PostDetail) => ({
       ...post,
       upvotes: post.votes.filter((v) => v.value === 1).length,

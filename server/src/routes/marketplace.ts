@@ -1,37 +1,74 @@
 import { Router } from "express";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { requireAuth, type AuthRequest } from "../middleware/auth.js";
 
 const router = Router();
 
+const FEATURED_CAP = 6;
+
 // Seller select shape reused across list and detail
 const sellerSelectBase = { id: true, username: true, name: true };
 
 router.get("/", async (req, res) => {
-  const { condition, category, q, status = "AVAILABLE" } = req.query as Record<string, string>;
+  const {
+    condition,
+    category,
+    q,
+    status = "AVAILABLE",
+    cursor,
+    limit: limitStr,
+  } = req.query as Record<string, string>;
 
-  const listings = await prisma.marketplaceListing.findMany({
+  const limit = Math.min(Math.max(parseInt(limitStr ?? "20", 10) || 20, 1), 50);
+  const isFirstPage = !cursor;
+
+  const baseWhere: Prisma.MarketplaceListingWhereInput = {
+    ...(status ? { status: status as "AVAILABLE" | "RESERVED" | "SOLD" } : {}),
+    ...(condition ? { condition: condition as "NEW" | "LIKE_NEW" | "USED" | "FOR_PARTS" } : {}),
+    ...(category ? { category } : {}),
+    ...(q
+      ? {
+          OR: [
+            { title: { contains: q, mode: "insensitive" as const } },
+            { description: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+
+  // Page 1: fetch featured listings separately (max 6, available only)
+  const featured = isFirstPage
+    ? await prisma.marketplaceListing.findMany({
+        where: { ...baseWhere, featured: true },
+        include: { seller: { select: sellerSelectBase } },
+        orderBy: { featuredAt: "desc" },
+        take: FEATURED_CAP,
+      })
+    : [];
+
+  const featuredIds = new Set(featured.map((l) => l.id));
+
+  // Cursor-paginated regular (non-featured) listings
+  const regularRaw = await prisma.marketplaceListing.findMany({
     where: {
-      ...(status ? { status: status as "AVAILABLE" | "RESERVED" | "SOLD" } : {}),
-      ...(condition ? { condition: condition as "NEW" | "LIKE_NEW" | "USED" | "FOR_PARTS" } : {}),
-      ...(category ? { category } : {}),
-      ...(q
-        ? {
-            OR: [
-              { title: { contains: q, mode: "insensitive" } },
-              { description: { contains: q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
+      ...baseWhere,
+      // Exclude featured items from the regular stream so they don't appear twice
+      ...(featuredIds.size > 0 ? { id: { notIn: [...featuredIds] } } : {}),
+      featured: false,
     },
-    include: {
-      seller: { select: sellerSelectBase },
-    },
-    orderBy: { createdAt: "desc" },
+    include: { seller: { select: sellerSelectBase } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   });
 
-  res.json(listings);
+  const hasNextPage = regularRaw.length > limit;
+  const regularSlice = hasNextPage ? regularRaw.slice(0, limit) : regularRaw;
+  const nextCursor = hasNextPage ? regularSlice[regularSlice.length - 1].id : null;
+
+  res.json({ items: [...featured, ...regularSlice], nextCursor });
 });
 
 router.get("/:id", async (req, res) => {
@@ -233,6 +270,51 @@ router.patch("/:id/status", requireAuth, async (req: AuthRequest, res) => {
   const updated = await prisma.marketplaceListing.update({
     where: { id },
     data: { status: parsed.data.status },
+  });
+
+  res.json(updated);
+});
+
+router.patch("/:id/feature", requireAuth, async (req: AuthRequest, res) => {
+  const id = req.params.id as string;
+
+  const listing = await prisma.marketplaceListing.findUnique({ where: { id } });
+
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+
+  if (listing.sellerId !== req.user!.id) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  // Toggle off
+  if (listing.featured) {
+    const updated = await prisma.marketplaceListing.update({
+      where: { id },
+      data: { featured: false, featuredAt: null },
+    });
+    res.json(updated);
+    return;
+  }
+
+  // Toggle on — check global cap
+  const featuredCount = await prisma.marketplaceListing.count({
+    where: { featured: true },
+  });
+
+  if (featuredCount >= FEATURED_CAP) {
+    res.status(409).json({
+      error: `Featured slots are full (max ${FEATURED_CAP}). Try again later.`,
+    });
+    return;
+  }
+
+  const updated = await prisma.marketplaceListing.update({
+    where: { id },
+    data: { featured: true, featuredAt: new Date() },
   });
 
   res.json(updated);

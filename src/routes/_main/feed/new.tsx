@@ -85,13 +85,13 @@ function NewPostPage() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
           <label className="label-military text-foreground" htmlFor="title">Title <span className="text-primary">*</span></label>
-          <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Write a descriptive title..." maxLength={200} className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground" />
+          <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Write a descriptive title..." maxLength={200} className="input-field" />
           <p className="text-[11px] text-muted-foreground text-right">{title.length}/200</p>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label className="label-military text-foreground" htmlFor="category">Category <span className="text-primary">*</span></label>
-          <select id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1">
+          <select id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">
             <option value="">Select a category...</option>
             {FORUM_CATEGORIES.map((c) => (<option key={c} value={c}>{c}</option>))}
           </select>
@@ -139,12 +139,12 @@ function NewPostPage() {
         <div className="flex items-center justify-between gap-4 pt-4 border-t border-border">
           <p className="text-xs text-muted-foreground">By posting, you agree to the community rules.</p>
           <div className="flex gap-2">
-            <Link to="/feed" search={{ tag: undefined, sort: "new", category: "All" }} className="rounded border border-border px-4 py-2 label-military text-muted-foreground hover:bg-accent transition-colors">Cancel</Link>
+            <Link to="/feed" search={{ tag: undefined, sort: "new", category: "All" }} className="btn-ghost">Cancel</Link>
             <button
               type="button"
               disabled={!canSubmit || createPost.isPending}
               onClick={handleSubmit}
-              className="rounded bg-primary px-4 py-2 label-military text-primary-foreground hover:bg-primary/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-primary"
             >
               {createPost.isPending ? "Posting…" : "Post"}
             </button>

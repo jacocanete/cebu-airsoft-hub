@@ -115,7 +115,7 @@ function EventsPage() {
           />
 
           <div className="border border-border bg-card p-4">
-            <p className="label-military text-primary mb-2">Hosting a game?</p>
+            <p className="sidebar-label mb-2">Hosting a game?</p>
             <p className="text-xs text-muted-foreground leading-relaxed mb-3">
               Create an event and let the community know. Set your date,
               location, fee, and player limit.

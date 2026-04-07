@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { STALE } from "@/lib/query-client";
 import type {
   PostsPage,
   MarketplaceListing,
@@ -7,8 +8,6 @@ import type {
   GroupListItem,
   UserListItem,
 } from "@/types";
-
-const STALE_TIME = 30_000;
 
 function buildUrl(base: string, q: string): string {
   return `${base}?${new URLSearchParams({ q })}`;
@@ -25,7 +24,7 @@ export function useSearchPosts(q: string) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: q.trim().length > 0,
-    staleTime: STALE_TIME,
+    staleTime: STALE.SHORT,
   });
 }
 
@@ -34,7 +33,7 @@ export function useSearchListings(q: string) {
     queryKey: ["search", "listings", q],
     queryFn: () => api.get<MarketplaceListing[]>(buildUrl("/api/marketplace", q)),
     enabled: q.trim().length > 0,
-    staleTime: STALE_TIME,
+    staleTime: STALE.SHORT,
   });
 }
 
@@ -43,7 +42,7 @@ export function useSearchEvents(q: string) {
     queryKey: ["search", "events", q],
     queryFn: () => api.get<EventListItem[]>(buildUrl("/api/events", q)),
     enabled: q.trim().length > 0,
-    staleTime: STALE_TIME,
+    staleTime: STALE.SHORT,
   });
 }
 
@@ -52,7 +51,7 @@ export function useSearchGroups(q: string) {
     queryKey: ["search", "groups", q],
     queryFn: () => api.get<GroupListItem[]>(buildUrl("/api/groups", q)),
     enabled: q.trim().length > 0,
-    staleTime: STALE_TIME,
+    staleTime: STALE.SHORT,
   });
 }
 
@@ -61,6 +60,6 @@ export function useSearchUsers(q: string) {
     queryKey: ["search", "users", q],
     queryFn: () => api.get<UserListItem[]>(buildUrl("/api/users", q)),
     enabled: q.trim().length > 0,
-    staleTime: STALE_TIME,
+    staleTime: STALE.SHORT,
   });
 }

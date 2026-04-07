@@ -10,6 +10,6 @@ export function useReplies(postId: string, commentId: string, enabled: boolean) 
     queryFn: () =>
       api.get<Comment[]>(`/api/posts/${postId}/comments/${commentId}/replies`),
     enabled,
-    staleTime: 30 * 1000,
+    // Omitting staleTime — falls through to STALE.SHORT global default.
   });
 }

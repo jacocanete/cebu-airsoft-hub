@@ -3,6 +3,20 @@ import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 
 /**
+ * Canonical staleTime constants. Import these in hooks instead of hardcoding
+ * raw numbers so there's a single place to tune cache freshness behaviour.
+ *
+ * - SHORT  (30 s) — the global default; no need to set it explicitly per-hook
+ * - MEDIUM (60 s) — lower-traffic queries (listings, events, groups, uploads)
+ * - LONG   (5 min) — slow-changing data (session, blocks, conversation detail)
+ */
+export const STALE = {
+  SHORT:  30_000,
+  MEDIUM: 60_000,
+  LONG:   5 * 60_000,
+} as const;
+
+/**
  * Singleton QueryClient shared between the React tree (QueryClientProvider)
  * and route loaders (which run outside React context).
  *
@@ -22,6 +36,8 @@ export const queryClient = new QueryClient({
     },
   }),
   defaultOptions: {
-    queries: { staleTime: 30 * 1000, retry: 1 },
+    // STALE.SHORT is the global default — hooks that need the same value
+    // should omit staleTime rather than restating it.
+    queries: { staleTime: STALE.SHORT, retry: 1 },
   },
 });

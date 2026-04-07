@@ -135,7 +135,14 @@ export type MarketplaceListing = {
   category: string;
   images: string[];
   status: ListingStatus;
+  featured: boolean;
+  featuredAt: string | null;
   createdAt: string;
+};
+
+export type ListingsPage = {
+  items: MarketplaceListing[];
+  nextCursor: string | null;
 };
 
 // Enriched seller shape returned by GET /api/listings/:id

@@ -1,6 +1,7 @@
 import { queryOptions, useMutation, useQuery, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { api } from "@/lib/api";
+import { STALE } from "@/lib/query-client";
 import { socket } from "@/lib/socket";
 import type { GameEvent, RSVPStatus } from "@/types";
 
@@ -8,7 +9,7 @@ export function useEventsList() {
   return useQuery<GameEvent[]>({
     queryKey: ["events"],
     queryFn: () => api.get("/api/events"),
-    staleTime: 60 * 1000,
+    staleTime: STALE.MEDIUM,
   });
 }
 
@@ -16,7 +17,7 @@ export const eventDetailQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ["events", id] as const,
     queryFn: () => api.get<GameEvent>(`/api/events/${id}`),
-    staleTime: 30 * 1000,
+    // Omitting staleTime — falls through to STALE.SHORT global default.
   });
 
 export function useEventDetail(id: string) {

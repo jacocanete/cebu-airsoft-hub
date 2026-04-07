@@ -137,7 +137,7 @@ function WriteReviewForm({
 
   return (
     <form onSubmit={handleSubmit} className="border-t border-border pt-4 mt-4">
-      <p className="label-military text-primary mb-3">Leave a Review</p>
+      <p className="sidebar-label">Leave a Review</p>
 
       <div className="mb-3">
         <label className="text-xs text-muted-foreground block mb-1.5">
@@ -196,7 +196,7 @@ export function SellerReviewSection({
     <div className="border border-border bg-card p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="label-military text-primary mb-0.5">Operator Reviews</p>
+          <p className="sidebar-label mb-0.5">Operator Reviews</p>
           <h2 className="text-base font-bold uppercase tracking-tight text-foreground">
             {sellerName}
           </h2>

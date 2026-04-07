@@ -1,12 +1,13 @@
 import { queryOptions, useMutation, useQuery, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { STALE } from "@/lib/query-client";
 import type { UserProfile, UserPost } from "@/types";
 
 export const userProfileQueryOptions = (username: string) =>
   queryOptions({
     queryKey: ["users", username] as const,
     queryFn: () => api.get<UserProfile>(`/api/users/${username}`),
-    staleTime: 60 * 1000,
+    staleTime: STALE.MEDIUM,
   });
 
 export function useUserProfile(username: string) {
@@ -18,7 +19,7 @@ export function useUserPosts(username: string) {
     queryKey: ["users", username, "posts"],
     queryFn: () => api.get<UserPost[]>(`/api/users/${username}/posts`),
     enabled: !!username,
-    staleTime: 60 * 1000,
+    staleTime: STALE.MEDIUM,
   });
 }
 

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Clock, MapPin, DollarSign } from "lucide-react";
 import { GAME_TYPE_COLORS, EVENT_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
+import { Badge } from "@/components/shared/badge";
 import type { GameEvent } from "@/types";
 
 export function EventCard({ event }: { event: GameEvent }) {
@@ -24,16 +25,12 @@ export function EventCard({ event }: { event: GameEvent }) {
 
       <div className="flex flex-col gap-2 p-4 flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span
-            className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${GAME_TYPE_COLORS[event.gameType] ?? FALLBACK_BADGE}`}
-          >
+          <Badge size="xs" colorClass={GAME_TYPE_COLORS[event.gameType] ?? FALLBACK_BADGE}>
             {event.gameType}
-          </span>
-          <span
-            className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${EVENT_STATUS_COLORS[event.status] ?? FALLBACK_BADGE}`}
-          >
+          </Badge>
+          <Badge size="xs" colorClass={EVENT_STATUS_COLORS[event.status] ?? FALLBACK_BADGE}>
             {event.status}
-          </span>
+          </Badge>
         </div>
 
         <h3 className="text-sm font-semibold text-foreground leading-snug group-hover:text-primary transition-colors">

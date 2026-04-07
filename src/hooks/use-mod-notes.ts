@@ -6,7 +6,7 @@ export function useModNotes(username: string) {
   return useQuery<ModNote[]>({
     queryKey: ["mod-notes", username],
     queryFn: () => api.get<ModNote[]>(`/api/users/${username}/notes`),
-    staleTime: 30_000,
+    // Omitting staleTime — falls through to STALE.SHORT global default.
   });
 }
 

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { CONDITION_COLORS, LISTING_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
+import { Badge } from "@/components/shared/badge";
 import type { MarketplaceListing } from "@/types";
 
 export function ListingCard({ listing }: { listing: MarketplaceListing }) {
@@ -25,16 +26,12 @@ export function ListingCard({ listing }: { listing: MarketplaceListing }) {
 
       <div className="flex flex-col gap-2 p-4 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span
-            className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${CONDITION_COLORS[listing.condition] ?? FALLBACK_BADGE}`}
-          >
+          <Badge size="xs" colorClass={CONDITION_COLORS[listing.condition] ?? FALLBACK_BADGE}>
             {listing.condition}
-          </span>
-          <span
-            className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${LISTING_STATUS_COLORS[listing.status] ?? FALLBACK_BADGE}`}
-          >
+          </Badge>
+          <Badge size="xs" colorClass={LISTING_STATUS_COLORS[listing.status] ?? FALLBACK_BADGE}>
             {listing.status}
-          </span>
+          </Badge>
         </div>
 
         <h3 className="text-sm font-semibold text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">

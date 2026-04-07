@@ -5,9 +5,10 @@ import {
   LISTING_STATUS_COLORS,
   FALLBACK_BADGE,
 } from "@/lib/constants";
+import { Badge } from "@/components/shared/badge";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { MessageButton } from "@/components/shared/MessageButton";
-import { useUpdateListingStatus } from "@/hooks/use-marketplace";
+import { useUpdateListingStatus, useToggleListingFeatured } from "@/hooks/use-marketplace";
 import type { MarketplaceListingDetail } from "@/types";
 
 interface ListingSidebarProps {
@@ -72,6 +73,44 @@ function StatusSelect({
   );
 }
 
+function FeatureToggle({
+  listingId,
+  featured,
+}: {
+  listingId: string;
+  featured: boolean;
+}) {
+  const { mutate, isPending, error } = useToggleListingFeatured();
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={() => mutate(listingId)}
+        className={`w-full flex items-center justify-center gap-1.5 rounded border px-3 py-2 label-military transition-colors disabled:opacity-60 ${
+          featured
+            ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/5"
+            : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
+        }`}
+      >
+        <Star className={`h-3.5 w-3.5 ${featured ? "fill-primary" : ""}`} />
+        {isPending ? "Updating…" : featured ? "Unfeature listing" : "Feature listing"}
+      </button>
+      {error && (
+        <p className="mt-1 text-xs text-destructive">
+          {error.message}
+        </p>
+      )}
+      {!featured && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Pins your listing at the top of the marketplace. Up to 6 slots globally.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function ListingSidebar({ listing, isOwner }: ListingSidebarProps) {
   const { seller } = listing;
 
@@ -94,28 +133,27 @@ export function ListingSidebar({ listing, isOwner }: ListingSidebarProps) {
     <div className="flex flex-col gap-3">
       {/* Price & Action card */}
       <div className="border border-border bg-card p-4">
-        <p className="label-military text-primary mb-2">Price</p>
+        <p className="sidebar-label mb-2">Price</p>
         <p className="text-3xl font-black text-primary mb-3">
           ₱{Number(listing.price).toLocaleString()}
         </p>
 
         <div className="flex items-center gap-2 mb-4">
-          <span
-            className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${LISTING_STATUS_COLORS[displayStatus] ?? FALLBACK_BADGE}`}
-          >
+          <Badge size="xs" colorClass={LISTING_STATUS_COLORS[displayStatus] ?? FALLBACK_BADGE}>
             {displayStatus}
-          </span>
+          </Badge>
         </div>
 
         {isOwner ? (
-          <div>
-            <p className="label-military text-muted-foreground mb-1.5">
+          <div className="flex flex-col gap-2">
+            <p className="label-military text-muted-foreground mb-0.5">
               Update status
             </p>
             <StatusSelect
               listingId={listing.id}
               currentStatus={listing.status.toString()}
             />
+            <FeatureToggle listingId={listing.id} featured={listing.featured} />
           </div>
         ) : isAvailable ? (
           <MessageButton
@@ -135,7 +173,7 @@ export function ListingSidebar({ listing, isOwner }: ListingSidebarProps) {
 
       {/* Seller / Operator card */}
       <div className="border border-border bg-card p-4">
-        <p className="label-military text-primary mb-3">Operator</p>
+        <p className="sidebar-label">Operator</p>
 
         <div className="flex items-start gap-3">
           <UserAvatar
@@ -191,7 +229,7 @@ export function ListingSidebar({ listing, isOwner }: ListingSidebarProps) {
 
       {/* Specs card */}
       <div className="border border-border bg-card p-4">
-        <p className="label-military text-primary mb-3">Specs</p>
+        <p className="sidebar-label">Specs</p>
 
         <dl className="flex flex-col gap-2.5">
           <div className="flex items-center gap-2.5 text-xs">
@@ -206,11 +244,9 @@ export function ListingSidebar({ listing, isOwner }: ListingSidebarProps) {
             <Shield className="h-3.5 w-3.5 text-primary shrink-0" />
             <dt className="text-muted-foreground shrink-0">Condition</dt>
             <dd className="ml-auto">
-              <span
-                className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${CONDITION_COLORS[listing.condition] ?? FALLBACK_BADGE}`}
-              >
+              <Badge size="xs" colorClass={CONDITION_COLORS[listing.condition] ?? FALLBACK_BADGE}>
                 {listing.condition}
-              </span>
+              </Badge>
             </dd>
           </div>
 

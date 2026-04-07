@@ -27,7 +27,7 @@ export function useReports(filters?: ReportFilters) {
       if (filters?.limit) params.set("limit", String(filters.limit));
       return api.get<ReportsPage>(`/api/reports${params.size ? `?${params}` : ""}`);
     },
-    staleTime: 30_000,
+    // Omitting staleTime — falls through to STALE.SHORT global default.
   });
 }
 

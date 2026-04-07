@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useCreateListing } from "@/hooks/use-marketplace";
 import { ImageUpload } from "@/components/shared/image-upload";
 import { BackLink } from "@/components/shared/back-link";
+import { PageHeader } from "@/components/shared/page-header";
 import { MARKETPLACE_CATEGORIES } from "@/lib/constants";
 
 const CONDITION_OPTIONS = [
@@ -74,10 +75,7 @@ function NewListingPage() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <BackLink to="/marketplace" label="Back to Marketplace" />
 
-      <div className="border-l-2 border-primary pl-3 mb-8">
-        <p className="label-military text-primary">Marketplace</p>
-        <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">Sell an Item</h1>
-      </div>
+      <PageHeader eyebrow="Marketplace" title="Sell an Item" className="mb-8" />
 
       <div className="flex flex-col gap-5">
 
@@ -109,7 +107,7 @@ function NewListingPage() {
             onChange={(e) => setTitle(e.target.value)}
             maxLength={200}
             placeholder="e.g. Tokyo Marui MWS GBBR — excellent condition"
-            className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
+            className="input-field"
           />
           <p className="text-[11px] text-muted-foreground text-right">{title.length}/200</p>
         </div>
@@ -124,7 +122,7 @@ function NewListingPage() {
               id="condition"
               value={condition}
               onChange={(e) => setCondition(e.target.value)}
-              className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1"
+              className="input-field"
             >
               <option value="">Select condition…</option>
               {CONDITION_OPTIONS.map((c) => (
@@ -141,7 +139,7 @@ function NewListingPage() {
               id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1"
+              className="input-field"
             >
               <option value="">Select category…</option>
               {MARKETPLACE_CATEGORIES.map((c) => (
@@ -164,7 +162,7 @@ function NewListingPage() {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder="e.g. 12000"
-            className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
+            className="input-field"
           />
         </div>
 
@@ -191,7 +189,7 @@ function NewListingPage() {
             <Link
               to="/marketplace"
               search={{ category: "All", condition: "All" }}
-              className="rounded border border-border px-4 py-2 label-military text-muted-foreground hover:bg-accent transition-colors"
+              className="btn-ghost"
             >
               Cancel
             </Link>
@@ -199,7 +197,7 @@ function NewListingPage() {
               type="button"
               disabled={!canSubmit}
               onClick={handleSubmit}
-              className="rounded bg-primary px-4 py-2 label-military text-primary-foreground hover:bg-primary/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-primary"
             >
               {createListing.isPending ? "Listing…" : "List Item"}
             </button>

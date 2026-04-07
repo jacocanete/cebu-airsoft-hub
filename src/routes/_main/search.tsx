@@ -8,7 +8,8 @@ import {
   Users,
   Search,
 } from "lucide-react";
-import { CATEGORY_COLORS, CONDITION_COLORS, FALLBACK_BADGE, LISTING_STATUS_COLORS, GAME_TYPE_COLORS, EVENT_STATUS_COLORS } from "@/lib/constants";
+import { FALLBACK_BADGE, GAME_TYPE_COLORS, EVENT_STATUS_COLORS } from "@/lib/constants";
+import { Badge } from "@/components/shared/badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { SkeletonList } from "@/components/shared/skeleton-list";
 import { SearchInput, SEARCH_TYPES } from "@/components/shared/search-input";
@@ -239,9 +240,6 @@ function EventsResults({ q }: { q: string }) {
 }
 
 function SearchEventCard({ event }: { event: EventListItem }) {
-  const gameTypeBadge = GAME_TYPE_COLORS[event.gameType] ?? FALLBACK_BADGE;
-  const statusBadge = EVENT_STATUS_COLORS[event.status] ?? FALLBACK_BADGE;
-
   return (
     <Link
       to="/events/$id"
@@ -251,12 +249,12 @@ function SearchEventCard({ event }: { event: EventListItem }) {
       <CalendarDays className="h-8 w-8 shrink-0 text-primary/60" />
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2 mb-1">
-          <span className={cn("inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", gameTypeBadge)}>
+          <Badge size="xs" colorClass={GAME_TYPE_COLORS[event.gameType] ?? FALLBACK_BADGE}>
             {event.gameType}
-          </span>
-          <span className={cn("inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", statusBadge)}>
+          </Badge>
+          <Badge size="xs" colorClass={EVENT_STATUS_COLORS[event.status] ?? FALLBACK_BADGE}>
             {event.status}
-          </span>
+          </Badge>
         </div>
         <p className="text-sm font-bold text-foreground truncate">{event.title}</p>
         <p className="text-xs text-muted-foreground mt-0.5">

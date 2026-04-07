@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { STALE } from "@/lib/query-client";
 import { socket } from "@/lib/socket";
 import { useCurrentUser } from "@/hooks/use-auth";
 import type {
@@ -117,7 +118,7 @@ export function useConversations() {
     initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!session?.user,
-    staleTime: 60_000,
+    staleTime: STALE.MEDIUM,
   });
 }
 
@@ -127,9 +128,11 @@ export function useConversations() {
 
 export const conversationQueryOptions = (id: string) =>
   queryOptions({
-    queryKey: ["conversation", id] as const,
+    // Nested under CONVERSATIONS_KEY so invalidating ["conversations"] cascades
+    // to both the list and individual detail entries.
+    queryKey: ["conversations", id] as const,
     queryFn: () => api.get<ConversationDetail>(`/api/conversations/${id}`),
-    staleTime: 5 * 60_000,
+    staleTime: STALE.LONG,
   });
 
 export function useConversation(id: string) {
@@ -483,8 +486,8 @@ export function useUnreadMessageCount() {
     queryFn: () =>
       api.get<{ count: number }>("/api/conversations/unread-count"),
     enabled: !!session?.user,
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    refetchInterval: STALE.MEDIUM,
+    // Omitting staleTime — falls through to STALE.SHORT global default.
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });

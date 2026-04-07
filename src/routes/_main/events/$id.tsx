@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { MessageButton } from "@/components/shared/MessageButton";
 import { GAME_TYPE_COLORS, EVENT_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
+import { Badge } from "@/components/shared/badge";
 import { BackLink } from "@/components/shared/back-link";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
@@ -54,16 +55,12 @@ function EventDetailPage() {
         <div className="flex-1 min-w-0">
           <div className="border border-border bg-card p-6 mb-4">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span
-                className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${GAME_TYPE_COLORS[event.gameType] ?? FALLBACK_BADGE}`}
-              >
+              <Badge colorClass={GAME_TYPE_COLORS[event.gameType] ?? FALLBACK_BADGE}>
                 {event.gameType}
-              </span>
-              <span
-                className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${EVENT_STATUS_COLORS[event.status] ?? FALLBACK_BADGE}`}
-              >
+              </Badge>
+              <Badge colorClass={EVENT_STATUS_COLORS[event.status] ?? FALLBACK_BADGE}>
                 {event.status}
-              </span>
+              </Badge>
             </div>
 
             <h1 className="text-xl font-black uppercase tracking-tight text-foreground sm:text-2xl mb-4">
@@ -95,7 +92,7 @@ function EventDetailPage() {
 
             {event.description && (
               <div className="pt-4">
-                <p className="label-military text-primary mb-3">Mission Brief</p>
+                <p className="sidebar-label">Mission Brief</p>
                 <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                   {event.description}
                 </div>
@@ -132,7 +129,7 @@ function EventDetailPage() {
           </div>
 
           <div className="border border-border bg-card p-6">
-            <p className="label-military text-primary mb-4">
+            <p className="sidebar-label mb-4">
               Confirmed Operators ({participants.length})
             </p>
             <div className="flex flex-col gap-2">
@@ -163,7 +160,7 @@ function EventDetailPage() {
 
         <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-3">
           <div className="border border-border bg-card p-4">
-            <p className="label-military text-primary mb-3">RSVP</p>
+            <p className="sidebar-label">RSVP</p>
             {playerCap > 0 && (
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-1">
@@ -197,7 +194,7 @@ function EventDetailPage() {
           </div>
 
           <div className="border border-border bg-card p-4">
-            <p className="label-military text-primary mb-3">Organizer</p>
+            <p className="sidebar-label">Organizer</p>
             <Link
               to="/profile/$username"
               params={{ username: event.organizer.username }}
@@ -230,7 +227,7 @@ function EventDetailPage() {
           </div>
 
           <div className="border border-border bg-card p-4">
-            <p className="label-military text-primary mb-3">Event Details</p>
+            <p className="sidebar-label">Event Details</p>
             <div className="flex flex-col gap-2">
               {[
                 { label: "Type", value: event.gameType },

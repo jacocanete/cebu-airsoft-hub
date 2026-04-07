@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { MessageSquare, Pin, Lock } from "lucide-react";
 import { CATEGORY_COLORS, FALLBACK_BADGE } from "@/lib/constants";
+import { Badge } from "@/components/shared/badge";
 import { VoteControl } from "@/components/shared/vote-control";
 import { ContentActionsMenu } from "@/components/shared/content-actions-menu";
 import { RemovedPlaceholder } from "@/components/shared/removed-placeholder";
@@ -83,11 +84,9 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
               <Lock className="h-3 w-3" aria-hidden /> Locked
             </span>
           )}
-          <span
-            className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${CATEGORY_COLORS[post.category] ?? FALLBACK_BADGE}`}
-          >
+          <Badge colorClass={CATEGORY_COLORS[post.category] ?? FALLBACK_BADGE}>
             {post.category}
-          </span>
+          </Badge>
           {!isRemoved && post.tags.map((tag) => (
             <Link
               key={tag}

@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Eye, EyeOff } from "lucide-react";
-import { useLogin } from "@/hooks/use-auth";
 import { AuthHeader } from "@/components/shared/auth-header";
+import { LoginForm } from "@/components/auth/login-form";
 
 export const Route = createFileRoute("/_auth/login")({
   head: () => ({
@@ -17,25 +15,13 @@ export const Route = createFileRoute("/_auth/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const { redirect } = Route.useSearch();
-  const login = useLogin();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    login.mutate(
-      { email, password },
-      {
-        onSuccess: () => {
-          if (redirect) {
-            window.location.href = redirect;
-          } else {
-            navigate({ to: "/feed", search: { tag: undefined, sort: "new", category: "All" } });
-          }
-        },
-      },
-    );
+  function handleSuccess() {
+    if (redirect) {
+      window.location.href = redirect;
+    } else {
+      navigate({ to: "/feed", search: { tag: undefined, sort: "new", category: "All" } });
+    }
   }
 
   return (
@@ -43,80 +29,7 @@ function LoginPage() {
       <div className="w-full max-w-sm">
         <AuthHeader title="Welcome back" subtitle="Sign in to your account" />
 
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <div>
-            <label
-              htmlFor="email"
-              className="label-military text-foreground mb-1.5 block"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="operator@example.com"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label
-                htmlFor="password"
-                className="label-military text-foreground"
-              >
-                Password
-              </label>
-              <button
-                type="button"
-                className="text-[10px] font-semibold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
-              >
-                Forgot?
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          {login.error && (
-            <p className="text-xs text-red-400">
-              {login.error instanceof Error
-                ? login.error.message
-                : "Invalid credentials"}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={login.isPending}
-            className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded bg-primary text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85 glow-red disabled:opacity-60"
-          >
-            {login.isPending ? "Signing in…" : "Sign in"}
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </form>
+        <LoginForm onSuccess={handleSuccess} />
 
         <div className="mt-6 text-center">
           <p className="text-xs text-muted-foreground">

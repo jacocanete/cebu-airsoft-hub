@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { STALE } from "@/lib/query-client";
 import { socket } from "@/lib/socket";
 import { useCurrentUser } from "@/hooks/use-auth";
 import type { Notification, NotificationsPage } from "@/types";
@@ -15,7 +16,7 @@ export function useNotifications() {
     queryKey: QUERY_KEY,
     queryFn: () => api.get<NotificationsPage>("/api/notifications?limit=20"),
     enabled: !!session?.user,
-    staleTime: 60_000,
+    staleTime: STALE.MEDIUM,
     // Cache is kept live by socket pushes (useUnreadCount) and optimistic
     // patches (useMarkRead/useMarkAllRead). Refetching on mount would race
     // with any in-flight PATCH mutations and overwrite correct optimistic state.
@@ -63,8 +64,8 @@ export function useUnreadCount() {
     queryKey: UNREAD_KEY,
     queryFn: () => api.get<{ count: number }>("/api/notifications/unread-count"),
     enabled: !!session?.user,
-    refetchInterval: 60_000, // periodic safety net — independent of mount events
-    staleTime: 30_000,
+    refetchInterval: STALE.MEDIUM, // periodic safety net — independent of mount events
+    // Omitting staleTime — falls through to STALE.SHORT global default.
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { STALE } from "@/lib/query-client";
 import type { AuditLogEntry, AuditAction, ModerationTarget } from "@/types";
 
 interface AuditFilters {
@@ -26,7 +27,7 @@ export function usePublicAuditLog(filters?: AuditFilters) {
   return useQuery<AuditPage>({
     queryKey: ["audit", "public", filters],
     queryFn: () => api.get<AuditPage>(`/api/audit${params.size ? `?${params}` : ""}`),
-    staleTime: 60_000,
+    staleTime: STALE.MEDIUM,
   });
 }
 
@@ -42,6 +43,6 @@ export function useModAuditLog(filters?: AuditFilters) {
   return useQuery<AuditPage>({
     queryKey: ["audit", "mod", filters],
     queryFn: () => api.get<AuditPage>(`/api/audit/mod${params.size ? `?${params}` : ""}`),
-    staleTime: 30_000,
+    // Omitting staleTime — falls through to STALE.SHORT global default.
   });
 }

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useUserProfile, useUpdateProfile } from "@/hooks/use-users";
 import { ImageUpload } from "@/components/shared/image-upload";
+import { PageHeader } from "@/components/shared/page-header";
 import type { Upload } from "@/types";
 
 export const Route = createFileRoute("/_main/settings")({
@@ -70,10 +71,7 @@ function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      <div className="border-l-2 border-primary pl-3 mb-8">
-        <p className="label-military text-primary">Account</p>
-        <h1 className="text-2xl font-black uppercase tracking-tight text-foreground">Settings</h1>
-      </div>
+      <PageHeader eyebrow="Account" title="Settings" className="mb-8" />
 
       <div className="flex flex-col gap-6">
 
@@ -180,7 +178,7 @@ function SettingsPage() {
             type="button"
             onClick={handleSave}
             disabled={updateProfile.isPending}
-            className="rounded bg-primary px-6 py-2.5 label-military text-primary-foreground hover:bg-primary/85 transition-colors disabled:opacity-50"
+            className="btn-primary px-6 py-2.5"
           >
             {updateProfile.isPending ? "Saving…" : "Save Changes"}
           </button>

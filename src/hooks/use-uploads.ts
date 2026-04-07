@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { STALE } from "@/lib/query-client";
 import type { Upload, UploadContext } from "@/types";
 
 interface PresignResponse {
@@ -120,6 +121,6 @@ export function useUserMedia(username: string) {
     queryKey: ["uploads", "media", username],
     queryFn: () => api.get(`/api/users/${username}/media`),
     enabled: !!username,
-    staleTime: 60 * 1000,
+    staleTime: STALE.MEDIUM,
   });
 }

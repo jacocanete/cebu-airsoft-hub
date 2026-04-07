@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Flag } from "lucide-react";
 import { CONDITION_COLORS, LISTING_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
+import { Badge } from "@/components/shared/badge";
 import { PROSE_CLASSES } from "@/lib/prose";
 import { useListingDetail, listingDetailQueryOptions } from "@/hooks/use-marketplace";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -55,19 +56,15 @@ function ListingDetailPage() {
           <div className="border border-border bg-card p-6">
             {/* Badge row */}
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span
-                className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${CONDITION_COLORS[listing.condition] ?? FALLBACK_BADGE}`}
-              >
+              <Badge size="xs" colorClass={CONDITION_COLORS[listing.condition] ?? FALLBACK_BADGE}>
                 {listing.condition}
-              </span>
-              <span
-                className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${LISTING_STATUS_COLORS[displayStatus] ?? FALLBACK_BADGE}`}
-              >
+              </Badge>
+              <Badge size="xs" colorClass={LISTING_STATUS_COLORS[displayStatus] ?? FALLBACK_BADGE}>
                 {displayStatus}
-              </span>
-              <span className="inline-flex items-center rounded border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              </Badge>
+              <Badge size="xs" colorClass="border border-border text-muted-foreground">
                 {listing.category}
-              </span>
+              </Badge>
             </div>
 
             <h1 className="text-2xl font-black uppercase tracking-tight text-foreground mb-3">
@@ -91,7 +88,7 @@ function ListingDetailPage() {
 
           {/* Description card */}
           <div className="border border-border bg-card p-6">
-            <p className="label-military text-primary mb-4">Intel Report</p>
+            <p className="sidebar-label mb-4">Intel Report</p>
             <div className={PROSE_CLASSES}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {listing.description}

@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { STALE } from "@/lib/query-client";
 import type { Group } from "@/types";
 
 export function useGroups() {
   return useQuery<Group[]>({
     queryKey: ["groups"],
     queryFn: () => api.get("/api/groups"),
-    staleTime: 60 * 1000,
+    staleTime: STALE.MEDIUM,
   });
 }
 
@@ -15,7 +16,7 @@ export function useGroupDetail(slug: string) {
     queryKey: ["groups", slug],
     queryFn: () => api.get(`/api/groups/${slug}`),
     enabled: !!slug,
-    staleTime: 60 * 1000,
+    staleTime: STALE.MEDIUM,
   });
 }
 

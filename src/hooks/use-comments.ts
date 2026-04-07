@@ -40,7 +40,7 @@ export function useComments(postId: string, sort: CommentSort = "best") {
   return useQuery<Comment[]>({
     queryKey: ["comments", postId, sort],
     queryFn: () => api.get(`/api/posts/${postId}/comments?sort=${sort}`),
-    staleTime: 30 * 1000,
+    // Omitting staleTime — falls through to STALE.SHORT global default.
   });
 }
 

@@ -192,3 +192,38 @@
     @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground;
   }
 }
+
+@layer components {
+  /**
+   * Shared form input style. Applies to <input>, <select>, and <textarea>
+   * (omit h-10 on textareas; add resize-none and py-2 manually).
+   * Usage: className="input-field"
+   */
+  .input-field {
+    @apply h-10 w-full rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground;
+  }
+
+  /**
+   * Primary action button — solid red background.
+   * Usage: className="btn-primary" (add disabled:opacity-X if needed)
+   */
+  .btn-primary {
+    @apply rounded bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-widest text-primary-foreground hover:bg-primary/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /**
+   * Ghost/secondary button — bordered, no background fill.
+   * Usage: className="btn-ghost"
+   */
+  .btn-ghost {
+    @apply rounded border border-border px-4 py-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:bg-accent transition-colors;
+  }
+
+  /**
+   * Sidebar section label — military eyebrow style in primary color.
+   * Usage: className="sidebar-label" on <p> or <h2> elements.
+   */
+  .sidebar-label {
+    @apply text-xs font-semibold uppercase tracking-widest text-primary mb-3;
+  }
+}

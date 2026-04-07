@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import { STALE } from "@/lib/query-client";
 import type { Session } from "@/types";
 
 export function useCurrentUser() {
@@ -13,7 +14,7 @@ export function useCurrentUser() {
         throw err;
       }
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE.LONG,
     retry: false,
   });
 }

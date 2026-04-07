@@ -8,6 +8,7 @@ import { CommentThread } from "@/components/feed/comment-thread";
 import { VoteControl } from "@/components/shared/vote-control";
 import { AnimatedCount } from "@/components/shared/animated-count";
 import { CATEGORY_COLORS, FALLBACK_BADGE, FORUM_CATEGORIES } from "@/lib/constants";
+import { Badge } from "@/components/shared/badge";
 import { Poll } from "@/components/feed/poll";
 import { PostEditor } from "@/components/feed/post-editor";
 import { TagInput } from "@/components/feed/tag-input";
@@ -215,11 +216,9 @@ function PostPage() {
                     <Lock className="h-3 w-3" aria-hidden /> Locked
                   </span>
                 )}
-                <span
-                  className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${CATEGORY_COLORS[post.category] ?? FALLBACK_BADGE}`}
-                >
+                <Badge colorClass={CATEGORY_COLORS[post.category] ?? FALLBACK_BADGE}>
                   {post.category}
-                </span>
+                </Badge>
                 {!isRemoved && post.tags.map((tag: string) => (
                   <Link
                     key={tag}
@@ -286,13 +285,13 @@ function PostPage() {
                   maxLength={200}
                   placeholder="Title"
                   aria-label="Post title"
-                  className="h-10 w-full rounded border border-border bg-background px-3 text-base font-bold text-foreground outline-none ring-primary focus:ring-1 placeholder:text-muted-foreground"
+                  className="input-field text-base font-bold"
                 />
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
                   aria-label="Post category"
-                  className="h-10 rounded border border-border bg-card px-3 text-sm text-foreground outline-none ring-primary focus:ring-1"
+                  className="input-field w-auto"
                 >
                   {FORUM_CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -321,7 +320,7 @@ function PostPage() {
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className="rounded border border-border px-4 py-2 label-military text-muted-foreground hover:bg-accent transition-colors"
+                    className="btn-ghost"
                   >
                     Cancel
                   </button>
@@ -340,7 +339,7 @@ function PostPage() {
                         { onSuccess: () => setIsEditing(false) },
                       )
                     }
-                    className="rounded bg-primary px-4 py-2 label-military text-primary-foreground hover:bg-primary/85 transition-colors disabled:opacity-60"
+                    className="btn-primary"
                   >
                     {updatePost.isPending ? "Saving…" : "Save"}
                   </button>
@@ -517,7 +516,7 @@ function PostPage() {
 
         <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-3">
           <div className="border border-border bg-card p-4">
-            <p className="label-military text-primary mb-3">Author</p>
+            <p className="sidebar-label">Author</p>
             <Link
               to="/profile/$username"
               params={{ username: post.author.username }}
@@ -540,7 +539,7 @@ function PostPage() {
           </div>
 
           <div className="border border-border bg-card p-4">
-            <p className="label-military text-primary mb-3">Stats</p>
+            <p className="sidebar-label">Stats</p>
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="label-military text-muted-foreground">Score</span>
@@ -554,7 +553,7 @@ function PostPage() {
           </div>
 
           <div className="border border-border bg-card p-4">
-            <p className="label-military text-primary mb-2">
+            <p className="sidebar-label mb-2">
               Got something to share?
             </p>
             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">

@@ -396,7 +396,7 @@ function ProfilePage() {
           <div className="flex-1 min-w-0">
             {user.bio && (
               <div className="border border-border bg-card p-5 mb-4">
-                <p className="label-military text-primary mb-2">Bio</p>
+                <p className="sidebar-label mb-2">Bio</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {user.bio}
                 </p>
@@ -514,7 +514,7 @@ function ProfilePage() {
 
           <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-3">
             <div className="border border-border bg-card p-4">
-              <p className="label-military text-primary mb-3">Stats</p>
+              <p className="sidebar-label">Stats</p>
               <div className="flex flex-col gap-2">
                 {[
                   { label: "Posts", value: user._count.posts },
@@ -531,7 +531,7 @@ function ProfilePage() {
 
             {primaryGroup && (
               <div className="border border-border bg-card p-4">
-                <p className="label-military text-primary mb-3">Unit</p>
+                <p className="sidebar-label">Unit</p>
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center border border-primary/30 bg-primary/10 shrink-0">
                     <Shield className="h-5 w-5 text-primary" />
