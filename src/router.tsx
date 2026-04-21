@@ -1,18 +1,25 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
+import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { routeTree } from "./routeTree.gen";
+import { createQueryClient } from "@/lib/query-client";
 import type { RouterContext } from "./routes/__root";
 
 export function createRouter() {
-  return createTanStackRouter({
+  const queryClient = createQueryClient();
+
+  const router = createTanStackRouter({
     routeTree,
     defaultPreload: "intent",
     scrollRestoration: true,
-    context: {
-      // Session is resolved at the route level via beforeLoad
-      // Initialised as null; individual routes read from queryClient cache
-      session: null,
-    } satisfies RouterContext,
+    context: { queryClient } satisfies RouterContext,
   });
+
+  // Auto-dehydrates queries fetched during SSR into the HTML payload and
+  // hydrates them on the client, so components that read from the same cache
+  // render immediately without a refetch.
+  setupRouterSsrQueryIntegration({ router, queryClient });
+
+  return router;
 }
 
 export function getRouter() {

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useLogin } from "@/hooks/use-auth";
+import { ApiError } from "@/lib/api";
+import { ResendVerificationButton } from "@/components/auth/resend-verification-button";
 
 interface LoginFormProps {
   onSuccess: () => void;
@@ -68,11 +70,16 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       </div>
 
       {login.error && (
-        <p className="text-xs text-red-400">
-          {login.error instanceof Error
-            ? login.error.message
-            : "Invalid credentials"}
-        </p>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-red-400">
+            {login.error instanceof Error
+              ? login.error.message
+              : "Invalid credentials"}
+          </p>
+          {login.error instanceof ApiError &&
+            login.error.code === "EMAIL_NOT_VERIFIED" &&
+            email && <ResendVerificationButton email={email} />}
+        </div>
       )}
 
       <button

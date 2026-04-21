@@ -3,7 +3,7 @@ import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useRegister } from "@/hooks/use-auth";
 
 interface SignupFormProps {
-  onSuccess: () => void;
+  onSuccess: (email: string) => void;
 }
 
 export function SignupForm({ onSuccess }: SignupFormProps) {
@@ -28,7 +28,10 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
       return;
     }
     setPasswordError("");
-    register.mutate({ name, username, email, password }, { onSuccess });
+    register.mutate(
+      { name, username, email, password },
+      { onSuccess: () => onSuccess(email) },
+    );
   }
 
   return (

@@ -31,14 +31,18 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  posts            Post[]
-  comments         Comment[]
-  votes            Vote[]
-  commentVotes     CommentVote[]
-  listings         MarketplaceListing[]
-  rsvps            RSVP[]
-  memberships      GroupMembership[]
-  eventsCreated    GameEvent[]          @relation("organizer")
+  posts               Post[]
+  comments            Comment[]
+  votes               Vote[]
+  commentVotes        CommentVote[]
+  listings            MarketplaceListing[]
+  rsvps               RSVP[]
+  memberships         GroupMembership[]
+  joinRequests        GroupJoinRequest[]   @relation("JoinRequestUser")
+  joinRequestsDecided GroupJoinRequest[]   @relation("JoinRequestDecider")
+  groupInvitesReceived GroupInvite[]       @relation("GroupInviteInvitee")
+  groupInvitesSent    GroupInvite[]        @relation("GroupInviteSender")
+  eventsCreated       GameEvent[]          @relation("organizer")
   reviewsGiven     SellerReview[]       @relation("ReviewerRelation")
   reviewsReceived  SellerReview[]       @relation("SellerRelation")
   notifications    Notification[]
@@ -124,6 +128,8 @@ model Post {
   locked    Boolean  @default(false)
   authorId  String
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  groupId   String?
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   poll      Poll?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -319,16 +325,20 @@ enum RSVPStatus {
 // Groups
 
 model Group {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
-  slug        String   @unique
+  slug        String      @unique
   description String?
   logo        String?
   banner      String?
-  createdAt   DateTime @default(now())
+  joinPolicy  JoinPolicy  @default(REQUEST)
+  createdAt   DateTime    @default(now())
 
-  members GroupMembership[]
-  events  GameEvent[]       @relation("group")
+  members       GroupMembership[]
+  events        GameEvent[]          @relation("group")
+  posts         Post[]
+  joinRequests  GroupJoinRequest[]
+  invites       GroupInvite[]
 }
 
 model GroupMembership {
@@ -346,6 +356,60 @@ enum GroupRole {
   MEMBER
   ADMIN
   OWNER
+}
+
+enum JoinPolicy {
+  REQUEST
+  INVITE_ONLY
+}
+
+model GroupJoinRequest {
+  id        String             @id @default(cuid())
+  userId    String
+  groupId   String
+  message   String?
+  status    JoinRequestStatus  @default(PENDING)
+  createdAt DateTime           @default(now())
+  decidedAt DateTime?
+  decidedById String?
+
+  user      User   @relation("JoinRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  group     Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  decidedBy User?  @relation("JoinRequestDecider", fields: [decidedById], references: [id])
+
+  @@unique([userId, groupId])
+  @@index([groupId, status])
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model GroupInvite {
+  id          String        @id @default(cuid())
+  groupId     String
+  invitedId   String
+  invitedById String
+  status      InviteStatus  @default(PENDING)
+  createdAt   DateTime      @default(now())
+  respondedAt DateTime?
+
+  group     Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invited   User   @relation("GroupInviteInvitee", fields: [invitedId], references: [id], onDelete: Cascade)
+  invitedBy User   @relation("GroupInviteSender", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, invitedId])
+  @@index([invitedId, status])
+  @@index([groupId, status])
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
 }
 
 // Bans & mod notes

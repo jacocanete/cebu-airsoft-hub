@@ -7,6 +7,10 @@ import { requireAuth, type AuthRequest } from "../middleware/auth.js";
 const router = Router();
 
 const FEATURED_CAP = 6;
+const FEATURED_TTL_MS = 24 * 60 * 60 * 1000;
+function featuredCutoff() {
+  return new Date(Date.now() - FEATURED_TTL_MS);
+}
 
 // Seller select shape reused across list and detail
 const sellerSelectBase = { id: true, username: true, name: true };
@@ -41,7 +45,7 @@ router.get("/", async (req, res) => {
   // Page 1: fetch featured listings separately (max 6, available only)
   const featured = isFirstPage
     ? await prisma.marketplaceListing.findMany({
-        where: { ...baseWhere, featured: true },
+        where: { ...baseWhere, featured: true, featuredAt: { gte: featuredCutoff() } },
         include: { seller: { select: sellerSelectBase } },
         orderBy: { featuredAt: "desc" },
         take: FEATURED_CAP,
@@ -54,9 +58,12 @@ router.get("/", async (req, res) => {
   const regularRaw = await prisma.marketplaceListing.findMany({
     where: {
       ...baseWhere,
-      // Exclude featured items from the regular stream so they don't appear twice
       ...(featuredIds.size > 0 ? { id: { notIn: [...featuredIds] } } : {}),
-      featured: false,
+      OR: [
+        { featured: false },
+        { featuredAt: { lt: featuredCutoff() } },
+        { featuredAt: null },
+      ],
     },
     include: { seller: { select: sellerSelectBase } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -300,9 +307,14 @@ router.patch("/:id/feature", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  // Toggle on — check global cap
+  // Toggle on — opportunistically clear expired featured flags, then check cap
+  await prisma.marketplaceListing.updateMany({
+    where: { featured: true, featuredAt: { lt: featuredCutoff() } },
+    data: { featured: false, featuredAt: null },
+  });
+
   const featuredCount = await prisma.marketplaceListing.count({
-    where: { featured: true },
+    where: { featured: true, featuredAt: { gte: featuredCutoff() } },
   });
 
   if (featuredCount >= FEATURED_CAP) {

@@ -11,6 +11,7 @@ import {
 import { logAudit } from "../lib/audit.js";
 import { FORUM_CATEGORIES } from "../lib/constants.js";
 import { excerpt } from "../lib/markdown.js";
+import { isGroupMember, isGroupStaff } from "../lib/groups.js";
 
 const router = Router();
 
@@ -42,6 +43,7 @@ const postSelect = {
   deletionReason: true,
   deletedBy: { select: { username: true } },
   author: { select: { id: true, username: true, name: true } },
+  group: { select: { id: true, name: true, slug: true } },
   _count: { select: { comments: true } },
   votes: { select: { userId: true, value: true } },
 };
@@ -64,6 +66,7 @@ function sanitizePost(
     deletionReason: string | null;
     deletedBy: { username: string } | null;
     author: { id: string; username: string; name: string };
+    group: { id: string; name: string; slug: string } | null;
     votes: { userId: string; value: number }[];
     _count: { comments: number };
   },
@@ -97,11 +100,34 @@ const removePostSchema = z.object({
 // subsequent pages so they don't appear twice.
 
 router.get("/", optionalAuth, async (req: AuthRequest, res) => {
-  const { category, sort = "new", q, tag, cursor, limit: limitStr } = req.query as Record<string, string>;
+  const { category, sort = "new", q, tag, cursor, limit: limitStr, groupSlug } = req.query as Record<string, string>;
   const limit = Math.min(Math.max(parseInt(limitStr ?? "20", 10) || 20, 1), 50);
   const isFirstPage = !cursor;
+  const userId = req.user?.id;
+
+  // Scope: group-scoped feed requires membership; default scope is forum-only
+  // (group posts are private and never appear alongside forum posts).
+  let scopeWhere: { groupId: string | null };
+  if (groupSlug) {
+    const group = await prisma.group.findUnique({
+      where: { slug: groupSlug },
+      select: { id: true },
+    });
+    if (!group) {
+      res.status(404).json({ error: "Group not found" });
+      return;
+    }
+    if (!userId || !(await isGroupMember(userId, group.id))) {
+      res.status(403).json({ error: "Members only" });
+      return;
+    }
+    scopeWhere = { groupId: group.id };
+  } else {
+    scopeWhere = { groupId: null };
+  }
 
   const baseWhere = {
+    ...scopeWhere,
     ...(category && category !== "All" ? { category } : {}),
     ...(tag ? { tags: { has: tag } } : {}),
     ...(q
@@ -113,8 +139,6 @@ router.get("/", optionalAuth, async (req: AuthRequest, res) => {
         }
       : {}),
   };
-
-  const userId = req.user?.id;
 
   if (sort === "new") {
     // Fetch pinned posts separately for page 1 only
@@ -210,6 +234,7 @@ router.get("/:id", optionalAuth, async (req: AuthRequest, res) => {
     where: { id: req.params.id as string },
     include: {
       author: { select: { id: true, username: true, name: true } },
+      group: { select: { id: true, name: true, slug: true } },
       votes: true,
       poll: {
         include: {
@@ -233,6 +258,15 @@ router.get("/:id", optionalAuth, async (req: AuthRequest, res) => {
   if (!post) {
     res.status(404).json({ error: "Post not found" });
     return;
+  }
+
+  // Group posts are members-only. Return 404 (not 403) to avoid leaking
+  // existence/title of private content to outsiders.
+  if (post.groupId) {
+    if (!userId || !(await isGroupMember(userId, post.groupId))) {
+      res.status(404).json({ error: "Post not found" });
+      return;
+    }
   }
 
   // Collect which option IDs the current user voted on, flattened to a simple
@@ -262,6 +296,7 @@ const createPostSchema = z.object({
   title: z.string().min(1).max(200),
   content: z.string().min(1).max(40_000),
   category: z.enum(FORUM_CATEGORIES),
+  groupSlug: z.string().optional(),
   tags: z
     .array(
       z
@@ -294,7 +329,24 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const { title, content, category, tags, images, poll } = parsed.data;
+  const { title, content, category, tags, images, poll, groupSlug } = parsed.data;
+
+  let groupId: string | null = null;
+  if (groupSlug) {
+    const group = await prisma.group.findUnique({
+      where: { slug: groupSlug },
+      select: { id: true },
+    });
+    if (!group) {
+      res.status(404).json({ error: "Group not found" });
+      return;
+    }
+    if (!(await isGroupMember(req.user!.id, group.id))) {
+      res.status(403).json({ error: "Members only" });
+      return;
+    }
+    groupId = group.id;
+  }
 
   const post = await prisma.post.create({
     data: {
@@ -304,6 +356,7 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
       tags,
       images,
       authorId: req.user!.id,
+      groupId,
       ...(poll
         ? {
             poll: {
@@ -413,7 +466,7 @@ router.delete("/:id", requireAuth, async (req: AuthRequest, res) => {
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { authorId: true, deletedAt: true },
+    select: { authorId: true, deletedAt: true, groupId: true },
   });
 
   if (!post) {
@@ -426,9 +479,13 @@ router.delete("/:id", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const actingAsMod = isMod(user) && user.id !== post.authorId;
+  // Group staff can moderate posts inside their group; platform mods can
+  // moderate anywhere.
+  const groupStaff = post.groupId ? await isGroupStaff(user.id, post.groupId) : false;
+  const canMod = isMod(user) || groupStaff;
+  const actingAsMod = canMod && user.id !== post.authorId;
 
-  if (user.id !== post.authorId && !isMod(user)) {
+  if (user.id !== post.authorId && !canMod) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -485,17 +542,24 @@ router.delete("/:id", requireAuth, async (req: AuthRequest, res) => {
 router.patch(
   "/:id/restore",
   requireAuth,
-  requireRole("MODERATOR", "ADMIN"),
   async (req: AuthRequest, res) => {
     const postId = req.params.id as string;
 
     const post = await prisma.post.findUnique({
       where: { id: postId },
-      select: { deletedAt: true },
+      select: { deletedAt: true, groupId: true },
     });
 
     if (!post) {
       res.status(404).json({ error: "Post not found" });
+      return;
+    }
+
+    const groupStaff = post.groupId
+      ? await isGroupStaff(req.user!.id, post.groupId)
+      : false;
+    if (!isMod(req.user) && !groupStaff) {
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
 
@@ -535,17 +599,24 @@ router.patch(
 router.patch(
   "/:id/pin",
   requireAuth,
-  requireRole("MODERATOR", "ADMIN"),
   async (req: AuthRequest, res) => {
     const postId = req.params.id as string;
 
     const post = await prisma.post.findUnique({
       where: { id: postId },
-      select: { pinned: true },
+      select: { pinned: true, groupId: true },
     });
 
     if (!post) {
       res.status(404).json({ error: "Post not found" });
+      return;
+    }
+
+    const groupStaff = post.groupId
+      ? await isGroupStaff(req.user!.id, post.groupId)
+      : false;
+    if (!isMod(req.user) && !groupStaff) {
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
 
@@ -573,17 +644,24 @@ router.patch(
 router.patch(
   "/:id/lock",
   requireAuth,
-  requireRole("MODERATOR", "ADMIN"),
   async (req: AuthRequest, res) => {
     const postId = req.params.id as string;
 
     const post = await prisma.post.findUnique({
       where: { id: postId },
-      select: { locked: true },
+      select: { locked: true, groupId: true },
     });
 
     if (!post) {
       res.status(404).json({ error: "Post not found" });
+      return;
+    }
+
+    const groupStaff = post.groupId
+      ? await isGroupStaff(req.user!.id, post.groupId)
+      : false;
+    if (!isMod(req.user) && !groupStaff) {
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
 
@@ -619,6 +697,19 @@ router.post("/:id/vote", requireAuth, async (req: AuthRequest, res) => {
   const { value } = parsed.data;
   const postId = req.params.id as string;
   const userId = req.user!.id;
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { groupId: true },
+  });
+  if (!post) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+  if (post.groupId && !(await isGroupMember(userId, post.groupId))) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
 
   if (value === 0) {
     await prisma.vote.deleteMany({ where: { userId, postId } });

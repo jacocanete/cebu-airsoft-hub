@@ -10,6 +10,7 @@ import {
 } from "../middleware/auth.js";
 import { logAudit } from "../lib/audit.js";
 import { notify } from "../lib/notify.js";
+import { isGroupMember, isGroupStaff } from "../lib/groups.js";
 
 type CommentParams = { postId: string; commentId: string };
 
@@ -72,12 +73,39 @@ const removeCommentSchema = z.object({
   reason: z.string().min(1, "Reason is required").max(500),
 });
 
+// Shared guard — returns the post's group context if the current user is
+// allowed to see the post. Writes the response and returns null if blocked.
+async function assertPostAccess(
+  req: AuthRequest,
+  res: import("express").Response,
+  postId: string,
+): Promise<{ groupId: string | null } | null> {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { groupId: true },
+  });
+  if (!post) {
+    res.status(404).json({ error: "Post not found" });
+    return null;
+  }
+  if (post.groupId) {
+    const userId = req.user?.id;
+    if (!userId || !(await isGroupMember(userId, post.groupId))) {
+      res.status(404).json({ error: "Post not found" });
+      return null;
+    }
+  }
+  return { groupId: post.groupId };
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/posts/:postId/comments
 // ---------------------------------------------------------------------------
 
 router.get("/", optionalAuth, async (req: AuthRequest & Request<CommentParams>, res) => {
   const { sort = "best" } = req.query as Record<string, string>;
+
+  if (!(await assertPostAccess(req, res, req.params.postId))) return;
 
   const raw = await prisma.comment.findMany({
     where: { postId: req.params.postId, parentCommentId: null },
@@ -105,6 +133,8 @@ router.get("/", optionalAuth, async (req: AuthRequest & Request<CommentParams>, 
 // ---------------------------------------------------------------------------
 
 router.get("/:commentId/replies", optionalAuth, async (req: AuthRequest & Request<CommentParams>, res) => {
+  if (!(await assertPostAccess(req, res, req.params.postId))) return;
+
   const raw = await prisma.comment.findMany({
     where: { parentCommentId: req.params.commentId },
     select: commentSelect,
@@ -113,6 +143,38 @@ router.get("/:commentId/replies", optionalAuth, async (req: AuthRequest & Reques
 
   res.json(raw.map((c) => sanitizeComment(c, req.user?.id)));
 });
+
+// ---------------------------------------------------------------------------
+// GET /api/posts/:postId/comments/:commentId/ancestors
+// Returns the ancestor comment ids from nearest parent up to the root.
+// ---------------------------------------------------------------------------
+
+router.get(
+  "/:commentId/ancestors",
+  optionalAuth,
+  async (req: AuthRequest & Request<CommentParams>, res) => {
+    if (!(await assertPostAccess(req, res, req.params.postId))) return;
+
+    // Cap recursion to 20 hops as a safety against pathological chains.
+    const rows = await prisma.$queryRaw<{ parentCommentId: string }[]>`
+      WITH RECURSIVE chain AS (
+        SELECT id, "parentCommentId", 1 AS depth
+        FROM "Comment"
+        WHERE id = ${req.params.commentId} AND "postId" = ${req.params.postId}
+        UNION ALL
+        SELECT c.id, c."parentCommentId", chain.depth + 1
+        FROM "Comment" c
+        JOIN chain ON c.id = chain."parentCommentId"
+        WHERE chain.depth < 20
+      )
+      SELECT "parentCommentId"
+      FROM chain
+      WHERE "parentCommentId" IS NOT NULL
+    `;
+
+    res.json(rows.map((r) => r.parentCommentId));
+  },
+);
 
 // ---------------------------------------------------------------------------
 // POST /api/posts/:postId/comments — create (locked-post check)
@@ -127,10 +189,15 @@ router.post("/", requireAuth, async (req: AuthRequest & Request<CommentParams>, 
   // Check if the post is locked before accepting new comments
   const post = await prisma.post.findUnique({
     where: { id: req.params.postId },
-    select: { locked: true, deletedAt: true },
+    select: { locked: true, deletedAt: true, groupId: true },
   });
 
   if (!post) {
+    res.status(404).json({ error: "Post not found" });
+    return;
+  }
+
+  if (post.groupId && !(await isGroupMember(req.user!.id, post.groupId))) {
     res.status(404).json({ error: "Post not found" });
     return;
   }
@@ -275,7 +342,11 @@ router.delete("/:commentId", requireAuth, async (req: AuthRequest & Request<Comm
 
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
-    select: { authorId: true, deletedAt: true },
+    select: {
+      authorId: true,
+      deletedAt: true,
+      post: { select: { groupId: true } },
+    },
   });
 
   if (!comment) {
@@ -288,9 +359,13 @@ router.delete("/:commentId", requireAuth, async (req: AuthRequest & Request<Comm
     return;
   }
 
-  const actingAsMod = isMod(user) && user.id !== comment.authorId;
+  const groupStaff = comment.post.groupId
+    ? await isGroupStaff(user.id, comment.post.groupId)
+    : false;
+  const canMod = isMod(user) || groupStaff;
+  const actingAsMod = canMod && user.id !== comment.authorId;
 
-  if (user.id !== comment.authorId && !isMod(user)) {
+  if (user.id !== comment.authorId && !canMod) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -339,17 +414,27 @@ router.delete("/:commentId", requireAuth, async (req: AuthRequest & Request<Comm
 router.patch(
   "/:commentId/restore",
   requireAuth,
-  requireRole("MODERATOR", "ADMIN"),
-  async (req: Request<CommentParams>, res) => {
+  async (req: AuthRequest & Request<CommentParams>, res) => {
     const { commentId } = req.params;
 
     const comment = await prisma.comment.findUnique({
       where: { id: commentId },
-      select: { deletedAt: true },
+      select: {
+        deletedAt: true,
+        post: { select: { groupId: true } },
+      },
     });
 
     if (!comment) {
       res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    const groupStaff = comment.post.groupId
+      ? await isGroupStaff(req.user!.id, comment.post.groupId)
+      : false;
+    if (!isMod(req.user) && !groupStaff) {
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
 
@@ -400,10 +485,18 @@ router.post("/:commentId/vote", requireAuth, async (req: AuthRequest & Request<C
 
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
-    select: { deletedAt: true },
+    select: {
+      deletedAt: true,
+      post: { select: { groupId: true } },
+    },
   });
 
   if (!comment) {
+    res.status(404).json({ error: "Comment not found" });
+    return;
+  }
+
+  if (comment.post.groupId && !(await isGroupMember(userId, comment.post.groupId))) {
     res.status(404).json({ error: "Comment not found" });
     return;
   }

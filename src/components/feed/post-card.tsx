@@ -33,13 +33,22 @@ interface PostCardProps {
   commentCount: number;
   userVote: 1 | -1 | 0;
   author: { id: string; username: string; name: string };
+  group: { id: string; name: string; slug: string } | null;
   createdAt: string;
   editedAt: string | null;
 }
 
 type PostCardFullProps = PostCardProps & SoftDeleteFields;
 
-export function PostCard({ post }: { post: PostCardFullProps }) {
+export function PostCard({
+  post,
+  extraCanMod = false,
+}: {
+  post: PostCardFullProps;
+  /** True if the viewer can moderate this post via a group role (in addition
+   * to the platform-level mod check). Set by group-feed callers. */
+  extraCanMod?: boolean;
+}) {
   const { data: session } = useCurrentUser();
   const user = session?.user ?? null;
   const vote = useVote();
@@ -51,7 +60,7 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
   const deletePost = useDeletePost(post.id);
 
   const isRemoved = !!post.deletedAt;
-  const userIsMod = isMod(user);
+  const userIsMod = isMod(user) || extraCanMod;
   const userIsOwner = canModerate(user, post.author.id) && !userIsMod;
 
   return (
@@ -84,20 +93,28 @@ export function PostCard({ post }: { post: PostCardFullProps }) {
               <Lock className="h-3 w-3" aria-hidden /> Locked
             </span>
           )}
-          <Badge colorClass={CATEGORY_COLORS[post.category] ?? FALLBACK_BADGE}>
-            {post.category}
-          </Badge>
-          {!isRemoved && post.tags.map((tag) => (
-            <Link
-              key={tag}
-              to="/feed"
-              search={{ tag, sort: "new", category: "All" }}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              #{tag}
-            </Link>
-          ))}
+          {!post.group && (
+            <Badge colorClass={CATEGORY_COLORS[post.category] ?? FALLBACK_BADGE}>
+              {post.category}
+            </Badge>
+          )}
+          {!isRemoved && post.tags.map((tag) =>
+            post.group ? (
+              <span key={tag} className="text-xs text-muted-foreground">
+                #{tag}
+              </span>
+            ) : (
+              <Link
+                key={tag}
+                to="/feed"
+                search={{ tag, sort: "new", category: "All" }}
+                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                #{tag}
+              </Link>
+            ),
+          )}
         </div>
 
         <Link to="/feed/$id" params={{ id: post.id }}>

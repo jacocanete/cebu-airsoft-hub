@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { queryClient } from "@/lib/query-client";
 import { useUserMedia } from "@/hooks/use-uploads";
 import { ImageLightbox } from "@/components/shared/image-lightbox";
 import {
@@ -19,7 +18,15 @@ import { MessageButton } from "@/components/shared/MessageButton";
 import { toast } from "sonner";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
-import { useUserProfile, useUserPosts, userProfileQueryOptions } from "@/hooks/use-users";
+import {
+  useUserProfile,
+  useUserPosts,
+  useUserComments,
+  useUserListings,
+  userProfileQueryOptions,
+} from "@/hooks/use-users";
+import { ListingCard } from "@/components/marketplace/listing-card";
+import { commentAnchorId } from "@/lib/comment-anchor";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useBanUser, useUnbanUser, useChangeRole } from "@/hooks/use-ban";
 import { useModNotes, useAddModNote } from "@/hooks/use-mod-notes";
@@ -43,8 +50,8 @@ const HERO_STYLE: CSSProperties = {
 };
 
 export const Route = createFileRoute("/_main/profile/$username")({
-  loader: ({ params }) =>
-    queryClient.ensureQueryData(userProfileQueryOptions(params.username)),
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(userProfileQueryOptions(params.username)),
   pendingComponent: () => (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <SkeletonCard />
@@ -243,6 +250,14 @@ function ProfilePage() {
   const { data: posts = [] } = useUserPosts(username);
   const { data: media = [] } = useUserMedia(username);
   const [tab, setTab] = useState<Tab>("Posts");
+  const { data: comments = [], isLoading: commentsLoading } = useUserComments(
+    username,
+    tab === "Comments",
+  );
+  const { data: listings = [], isLoading: listingsLoading } = useUserListings(
+    username,
+    tab === "Listings",
+  );
   const [mediaLightboxOpen, setMediaLightboxOpen] = useState(false);
   const [mediaLightboxIndex, setMediaLightboxIndex] = useState(0);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
@@ -503,10 +518,63 @@ function ProfilePage() {
                     </>
                   )
                 )}
-                {(tab === "Comments" || tab === "Listings") && (
-                  <p className="p-8 text-center text-sm text-muted-foreground">
-                    Coming soon.
-                  </p>
+                {tab === "Comments" && (
+                  commentsLoading ? (
+                    <p className="p-8 text-center text-sm text-muted-foreground">Loading…</p>
+                  ) : comments.length === 0 ? (
+                    <p className="p-8 text-center text-sm text-muted-foreground">
+                      No comments yet.
+                    </p>
+                  ) : (
+                    comments.map((comment) => (
+                      <div
+                        key={comment.id}
+                        className="flex items-start gap-3 p-4 transition-colors hover:bg-accent"
+                      >
+                        <div className="flex flex-col items-center gap-0.5 pt-0.5 shrink-0" aria-hidden="true">
+                          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs font-bold text-foreground">
+                            {comment._count.votes}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Link
+                            to="/feed/$id"
+                            params={{ id: comment.post.id }}
+                            hash={commentAnchorId(comment.id)}
+                            className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            on {comment.post.title}
+                          </Link>
+                          <p className="mt-1 text-sm text-foreground leading-snug line-clamp-3 whitespace-pre-wrap">
+                            {comment.content}
+                          </p>
+                          <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                            <span suppressHydrationWarning>{formatRelativeTime(comment.createdAt)}</span>
+                            <span className="inline-flex items-center gap-1">
+                              <MessageSquare className="h-3 w-3" aria-hidden="true" />
+                              <span aria-label={`${comment._count.replies} replies`}>{comment._count.replies}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )
+                )}
+                {tab === "Listings" && (
+                  listingsLoading ? (
+                    <p className="p-8 text-center text-sm text-muted-foreground">Loading…</p>
+                  ) : listings.length === 0 ? (
+                    <p className="p-8 text-center text-sm text-muted-foreground">
+                      No listings yet.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3">
+                      {listings.map((listing) => (
+                        <ListingCard key={listing.id} listing={listing} />
+                      ))}
+                    </div>
+                  )
                 )}
               </div>
             </div>

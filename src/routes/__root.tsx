@@ -7,31 +7,24 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { queryClient } from "@/lib/query-client";
+import type { QueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { NavigationProgress } from "@/components/shared/navigation-progress";
 import { AuthModalProvider } from "@/components/auth/auth-modal-provider";
 import { AuthModal } from "@/components/auth/auth-modal";
+import { sessionQueryOptions } from "@/lib/queries/session";
 import appCss from "@/styles/globals.css?url";
-import type { Session } from "@/types";
 
 export interface RouterContext {
-  session: Session | null;
+  queryClient: QueryClient;
 }
 
-
-
 export const Route = createRootRouteWithContext<RouterContext>()({
-  beforeLoad: async () => {
-    try {
-      const session = await api.get<Session>("/api/auth/get-session");
-      return { session };
-    } catch {
-      return { session: null };
-    }
-  },
+  // Populate the session cache before any child beforeLoad runs so protected
+  // routes can read it synchronously via queryClient.getQueryData. The
+  // queryFn handles cookie forwarding on SSR; the SSR query integration
+  // dehydrates the result into the HTML so the client reuses it.
+  beforeLoad: ({ context }) => context.queryClient.ensureQueryData(sessionQueryOptions()),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -57,16 +50,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthModalProvider>
-        <RootDocument>
-          <NavigationProgress />
-          <Outlet />
-        </RootDocument>
-        <AuthModal />
-        <Toaster />
-      </AuthModalProvider>
-    </QueryClientProvider>
+    <AuthModalProvider>
+      <RootDocument>
+        <NavigationProgress />
+        <Outlet />
+      </RootDocument>
+      <AuthModal />
+      <Toaster />
+    </AuthModalProvider>
   );
 }
 

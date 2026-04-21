@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { MessageSquare, Minus, Plus, Loader2 } from "lucide-react";
 import type { Comment } from "@/types";
@@ -14,6 +14,7 @@ import { RemovedPlaceholder } from "@/components/shared/removed-placeholder";
 import { ReportDialog } from "@/components/shared/report-dialog";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { isMod } from "@/lib/roles";
+import { commentAnchorId, scrollToCommentAnchor } from "@/lib/comment-anchor";
 
 const MAX_DEPTH = 4;
 
@@ -54,12 +55,19 @@ interface CommentItemProps {
   comment: Comment;
   postId: string;
   depth?: number;
-  isHighlighted?: boolean;
+  highlightIds?: string[];
+  forceExpandIds?: Set<string>;
 }
 
-function CommentItem({ comment, postId, depth = 0, isHighlighted = false }: CommentItemProps) {
-  // depth >= 2 starts collapsed; top-level + direct replies start expanded
-  const [collapsed, setCollapsed] = useState(depth >= 2);
+function CommentItem({ comment, postId, depth = 0, highlightIds, forceExpandIds }: CommentItemProps) {
+  const isHighlighted = highlightIds?.includes(comment.id) ?? false;
+  const shouldForceExpand = forceExpandIds?.has(comment.id) ?? false;
+  // depth >= 2 starts collapsed; top-level + direct replies start expanded.
+  const [collapsed, setCollapsed] = useState(depth >= 2 && !shouldForceExpand);
+
+  useEffect(() => {
+    if (shouldForceExpand) setCollapsed(false);
+  }, [shouldForceExpand]);
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
@@ -101,17 +109,7 @@ function CommentItem({ comment, postId, depth = 0, isHighlighted = false }: Comm
     if (!replies.some((r) => r.id === pending)) return;
 
     setHighlightedReplyId(pending);
-
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    const el = document.getElementById(`comment-${pending}`);
-    if (el) {
-      el.scrollIntoView({
-        behavior: prefersReducedMotion ? "auto" : "smooth",
-        block: "center",
-      });
-    }
+    scrollToCommentAnchor(pending);
     newReplyIdRef.current = null;
   }, [replies]);
 
@@ -138,7 +136,7 @@ function CommentItem({ comment, postId, depth = 0, isHighlighted = false }: Comm
   if (collapsed) {
     return (
       <div
-        id={`comment-${comment.id}`}
+        id={commentAnchorId(comment.id)}
         role="listitem"
         className={`${depth > 0 ? "mt-2" : ""}${isHighlighted ? " border-l-2 border-primary/60 bg-primary/5 rounded -mx-2 px-2 py-1" : ""}`}
       >
@@ -173,7 +171,7 @@ function CommentItem({ comment, postId, depth = 0, isHighlighted = false }: Comm
   // ------------------------------------------------------------------
   return (
     <div
-      id={`comment-${comment.id}`}
+      id={commentAnchorId(comment.id)}
       role="listitem"
       className={`flex gap-2 ${depth > 0 ? "mt-3" : ""}${isHighlighted ? " border-l-2 border-primary/60 bg-primary/5 rounded -mx-2 px-2 py-1" : ""}`}
     >
@@ -397,7 +395,12 @@ function CommentItem({ comment, postId, depth = 0, isHighlighted = false }: Comm
                     comments={replies}
                     postId={postId}
                     depth={depth + 1}
-                    highlightIds={highlightedReplyId ? [highlightedReplyId] : undefined}
+                    highlightIds={
+                      highlightedReplyId
+                        ? [highlightedReplyId, ...(highlightIds ?? [])]
+                        : highlightIds
+                    }
+                    forceExpandIds={forceExpandIds}
                   />
                 ) : (
                   <Link
@@ -426,13 +429,10 @@ interface CommentThreadProps {
   postId: string;
   depth?: number;
   highlightIds?: string[];
+  forceExpandIds?: Set<string>;
 }
 
-export function CommentThread({ comments, postId, depth = 0, highlightIds }: CommentThreadProps) {
-  const highlightSet = useMemo(
-    () => (highlightIds && highlightIds.length > 0 ? new Set(highlightIds) : null),
-    [highlightIds],
-  );
+export function CommentThread({ comments, postId, depth = 0, highlightIds, forceExpandIds }: CommentThreadProps) {
   return (
     <div role="list" className={`flex flex-col ${depth === 0 ? "gap-5" : "gap-0"}`}>
       {comments.map((comment) => (
@@ -441,7 +441,8 @@ export function CommentThread({ comments, postId, depth = 0, highlightIds }: Com
           comment={comment}
           postId={postId}
           depth={depth}
-          isHighlighted={highlightSet?.has(comment.id) ?? false}
+          highlightIds={highlightIds}
+          forceExpandIds={forceExpandIds}
         />
       ))}
     </div>

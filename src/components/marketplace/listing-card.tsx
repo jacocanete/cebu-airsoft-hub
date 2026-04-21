@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { CONDITION_COLORS, LISTING_STATUS_COLORS, FALLBACK_BADGE } from "@/lib/constants";
 import { Badge } from "@/components/shared/badge";
+import { formatRelativeTime } from "@/lib/format-time";
 import type { MarketplaceListing } from "@/types";
 
 export function ListingCard({ listing }: { listing: MarketplaceListing }) {
@@ -51,7 +52,7 @@ export function ListingCard({ listing }: { listing: MarketplaceListing }) {
           >
             {listing.seller.name}
           </Link>
-          <span>{listing.createdAt}</span>
+          <span>{formatRelativeTime(listing.createdAt)}</span>
         </div>
       </div>
     </Link>

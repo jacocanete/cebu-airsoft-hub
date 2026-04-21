@@ -1,5 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Bell, MessageSquare, Reply, ShieldX } from "lucide-react";
+import {
+  Bell,
+  Mail,
+  MailCheck,
+  MailX,
+  MessageSquare,
+  Reply,
+  ShieldX,
+  Users,
+} from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { SkeletonList } from "@/components/shared/skeleton-list";
 import { formatRelativeTime } from "@/lib/format-time";
@@ -17,9 +26,29 @@ export const Route = createFileRoute("/_main/notifications")({
 function NotifIcon({ type }: { type: NotificationType }) {
   const cls = "h-4 w-4 shrink-0 mt-0.5";
   switch (type) {
-    case "comment_on_post":  return <MessageSquare className={cn(cls, "text-primary")} />;
-    case "reply_to_comment": return <Reply className={cn(cls, "text-blue-400")} />;
-    default:                 return <ShieldX className={cn(cls, "text-red-400")} />;
+    case "comment_on_post":       return <MessageSquare className={cn(cls, "text-primary")} />;
+    case "reply_to_comment":      return <Reply className={cn(cls, "text-blue-400")} />;
+    case "group_join_request":    return <Users className={cn(cls, "text-primary")} />;
+    case "group_join_approved":   return <Users className={cn(cls, "text-emerald-400")} />;
+    case "group_join_rejected":   return <Users className={cn(cls, "text-red-400")} />;
+    case "group_invite_received": return <Mail className={cn(cls, "text-primary")} />;
+    case "group_invite_accepted": return <MailCheck className={cn(cls, "text-emerald-400")} />;
+    case "group_invite_declined": return <MailX className={cn(cls, "text-muted-foreground")} />;
+    default:                      return <ShieldX className={cn(cls, "text-red-400")} />;
+  }
+}
+
+function notifDestination(type: NotificationType, relatedId: string) {
+  switch (type) {
+    case "group_join_request":
+    case "group_join_approved":
+    case "group_join_rejected":
+    case "group_invite_received":
+    case "group_invite_accepted":
+    case "group_invite_declined":
+      return { to: "/groups/$slug" as const, params: { slug: relatedId } };
+    default:
+      return { to: "/feed/$id" as const, params: { id: relatedId } };
   }
 }
 
@@ -34,7 +63,7 @@ function NotifRow({ notif }: { notif: Notification }) {
       markRead(notif.id);
     }
     if (notif.relatedId) {
-      navigate({ to: "/feed/$id", params: { id: notif.relatedId } });
+      navigate(notifDestination(notif.type, notif.relatedId));
     }
   }
 

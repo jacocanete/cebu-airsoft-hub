@@ -5,12 +5,14 @@ import { useCurrentUser } from "@/hooks/use-auth";
 import { useUserProfile, useUpdateProfile } from "@/hooks/use-users";
 import { ImageUpload } from "@/components/shared/image-upload";
 import { PageHeader } from "@/components/shared/page-header";
+import { getCachedSession } from "@/lib/queries/session";
 import type { Upload } from "@/types";
 
 export const Route = createFileRoute("/_main/settings")({
   head: () => ({ meta: [{ title: "Settings | Cebu Airsoft Hub" }] }),
   beforeLoad: ({ context, location }) => {
-    if (!context.session?.user) {
+    const session = getCachedSession(context.queryClient);
+    if (!session?.user) {
       throw redirect({
         to: "/login",
         search: { redirect: location.href },

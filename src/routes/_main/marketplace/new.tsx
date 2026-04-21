@@ -6,6 +6,7 @@ import { ImageUpload } from "@/components/shared/image-upload";
 import { BackLink } from "@/components/shared/back-link";
 import { PageHeader } from "@/components/shared/page-header";
 import { MARKETPLACE_CATEGORIES } from "@/lib/constants";
+import { getCachedSession } from "@/lib/queries/session";
 
 const CONDITION_OPTIONS = [
   { value: "NEW", label: "New" },
@@ -18,7 +19,8 @@ import type { Upload } from "@/types";
 export const Route = createFileRoute("/_main/marketplace/new")({
   head: () => ({ meta: [{ title: "Sell an Item | Cebu Airsoft Hub" }] }),
   beforeLoad: ({ context, location }) => {
-    if (!context.session?.user) {
+    const session = getCachedSession(context.queryClient);
+    if (!session?.user) {
       throw redirect({
         to: "/login",
         search: { redirect: location.href },

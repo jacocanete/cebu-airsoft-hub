@@ -13,3 +13,12 @@ export function useReplies(postId: string, commentId: string, enabled: boolean) 
     // Omitting staleTime — falls through to STALE.SHORT global default.
   });
 }
+
+export function useCommentAncestors(postId: string, commentId: string | null) {
+  return useQuery<string[]>({
+    queryKey: ["comment-ancestors", postId, commentId],
+    queryFn: () =>
+      api.get<string[]>(`/api/posts/${postId}/comments/${commentId}/ancestors`),
+    enabled: !!postId && !!commentId,
+  });
+}

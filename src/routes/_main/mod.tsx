@@ -20,6 +20,7 @@ import { useBanUser, useUnbanUser, useChangeRole } from "@/hooks/use-ban";
 import { isMod, isAdmin } from "@/lib/roles";
 import { REPORT_STATUS_COLORS, REPORT_CATEGORY_LABELS } from "@/lib/constants";
 import { useCurrentUser } from "@/hooks/use-auth";
+import { getCachedSession } from "@/lib/queries/session";
 import { cn } from "@/lib/utils";
 import type { Report, AuditLogEntry, UserListItem, Role } from "@/types";
 import { toast } from "sonner";
@@ -29,7 +30,8 @@ export const Route = createFileRoute("/_main/mod")({
     meta: [{ title: "Mod Dashboard | Cebu Airsoft Hub" }],
   }),
   beforeLoad: ({ context }) => {
-    if (!isMod(context.session?.user)) {
+    const session = getCachedSession(context.queryClient);
+    if (!isMod(session?.user)) {
       throw redirect({ to: "/feed", search: { tag: undefined, sort: "new", category: "All" } });
     }
   },

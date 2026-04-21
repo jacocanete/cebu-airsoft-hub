@@ -228,6 +228,7 @@ export type PostListItem = Pick<
     editedAt: string | null;
     excerpt: string;
     author: { id: string; username: string; name: string };
+    group: { id: string; name: string; slug: string } | null;
     upvotes: number;
     downvotes: number;
     commentCount: number;
@@ -244,6 +245,7 @@ export type PostDetail = Post &
     locked: boolean;
     editedAt: string | null;
     content: string;
+    group: { id: string; name: string; slug: string } | null;
     votes: Array<{ value: number; userId: string }>;
     _count: { comments: number };
     poll?: {
@@ -289,7 +291,21 @@ export type UserPost = {
   _count: { comments: number; votes: number };
 };
 
+export type UserComment = {
+  id: string;
+  content: string;
+  createdAt: string;
+  editedAt: string | null;
+  post: { id: string; title: string };
+  _count: { votes: number; replies: number };
+};
+
 // Groups
+
+export type JoinPolicy = "REQUEST" | "INVITE_ONLY";
+export type GroupRole = "MEMBER" | "ADMIN" | "OWNER";
+export type JoinRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type InviteStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED";
 
 export type Group = {
   id: string;
@@ -297,9 +313,93 @@ export type Group = {
   slug: string;
   description?: string;
   logo?: string;
+  banner?: string;
+  joinPolicy: JoinPolicy;
   memberCount: number;
   gameCount?: number;
   createdAt: string;
+};
+
+export type GroupMember = {
+  userId: string;
+  role: GroupRole;
+  joinedAt: string;
+  user: {
+    id: string;
+    username: string;
+    name: string;
+    avatar: string | null;
+  };
+};
+
+export type GroupDetail = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  logo: string | null;
+  banner: string | null;
+  joinPolicy: JoinPolicy;
+  createdAt: string;
+  members: GroupMember[];
+  viewerMembership: { role: GroupRole } | null;
+  viewerJoinRequest: {
+    id: string;
+    status: JoinRequestStatus;
+    createdAt: string;
+  } | null;
+  viewerInvite: {
+    id: string;
+    status: InviteStatus;
+    createdAt: string;
+  } | null;
+  pendingJoinRequestCount: number | null;
+};
+
+export type GroupJoinRequestDetail = {
+  id: string;
+  message: string | null;
+  status: JoinRequestStatus;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    name: string;
+    avatar: string | null;
+    bio: string | null;
+  };
+};
+
+export type GroupInviteDetail = {
+  id: string;
+  status: InviteStatus;
+  createdAt: string;
+  invited: {
+    id: string;
+    username: string;
+    name: string;
+    avatar: string | null;
+  };
+  invitedBy: { id: string; username: string; name: string };
+};
+
+export type MyGroupInvite = {
+  id: string;
+  status: InviteStatus;
+  createdAt: string;
+  group: {
+    id: string;
+    name: string;
+    slug: string;
+    logo: string | null;
+    description: string | null;
+  };
+  invitedBy: {
+    id: string;
+    username: string;
+    name: string;
+    avatar: string | null;
+  };
 };
 
 // Notifications
@@ -309,7 +409,13 @@ export type NotificationType =
   | "reply_to_comment"
   | "post_removed"
   | "comment_removed"
-  | "account_banned";
+  | "account_banned"
+  | "group_join_request"
+  | "group_join_approved"
+  | "group_join_rejected"
+  | "group_invite_received"
+  | "group_invite_accepted"
+  | "group_invite_declined";
 
 export type Notification = {
   id: string;

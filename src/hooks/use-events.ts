@@ -57,3 +57,25 @@ export function useRsvp() {
     },
   });
 }
+
+export function useCreateEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      title: string;
+      description?: string;
+      gameSite: string;
+      gameType: string;
+      date: string;
+      time?: string;
+      entranceFee?: number;
+      lat: number;
+      lng: number;
+      locationName: string;
+      playerCap?: number;
+      rules?: string;
+      groupId?: string;
+    }) => api.post<GameEvent>("/api/events", data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["events"] }),
+  });
+}

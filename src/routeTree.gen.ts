@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as MainRouteImport } from './routes/_main'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as MainIndexRouteImport } from './routes/_main/index'
@@ -29,13 +30,19 @@ import { Route as MainMessagesIdRouteImport } from './routes/_main/messages/$id'
 import { Route as MainMarketplaceNewRouteImport } from './routes/_main/marketplace/new'
 import { Route as MainMarketplaceIdRouteImport } from './routes/_main/marketplace/$id'
 import { Route as MainGroupsNewRouteImport } from './routes/_main/groups/new'
-import { Route as MainGroupsSlugRouteImport } from './routes/_main/groups/$slug'
 import { Route as MainFeedSearchRouteImport } from './routes/_main/feed/search'
 import { Route as MainFeedNewRouteImport } from './routes/_main/feed/new'
 import { Route as MainFeedIdRouteImport } from './routes/_main/feed/$id'
 import { Route as MainEventsNewRouteImport } from './routes/_main/events/new'
 import { Route as MainEventsIdRouteImport } from './routes/_main/events/$id'
+import { Route as MainGroupsSlugIndexRouteImport } from './routes/_main/groups/$slug.index'
+import { Route as MainGroupsSlugSettingsRouteImport } from './routes/_main/groups/$slug.settings'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MainRoute = MainRouteImport.update({
   id: '/_main',
   getParentRoute: () => rootRouteImport,
@@ -134,11 +141,6 @@ const MainGroupsNewRoute = MainGroupsNewRouteImport.update({
   path: '/groups/new',
   getParentRoute: () => MainRoute,
 } as any)
-const MainGroupsSlugRoute = MainGroupsSlugRouteImport.update({
-  id: '/groups/$slug',
-  path: '/groups/$slug',
-  getParentRoute: () => MainRoute,
-} as any)
 const MainFeedSearchRoute = MainFeedSearchRouteImport.update({
   id: '/feed/search',
   path: '/feed/search',
@@ -164,9 +166,20 @@ const MainEventsIdRoute = MainEventsIdRouteImport.update({
   path: '/events/$id',
   getParentRoute: () => MainRoute,
 } as any)
+const MainGroupsSlugIndexRoute = MainGroupsSlugIndexRouteImport.update({
+  id: '/groups/$slug/',
+  path: '/groups/$slug/',
+  getParentRoute: () => MainRoute,
+} as any)
+const MainGroupsSlugSettingsRoute = MainGroupsSlugSettingsRouteImport.update({
+  id: '/groups/$slug/settings',
+  path: '/groups/$slug/settings',
+  getParentRoute: () => MainRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof MainIndexRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/mod': typeof MainModRoute
@@ -179,7 +192,6 @@ export interface FileRoutesByFullPath {
   '/feed/$id': typeof MainFeedIdRoute
   '/feed/new': typeof MainFeedNewRoute
   '/feed/search': typeof MainFeedSearchRoute
-  '/groups/$slug': typeof MainGroupsSlugRoute
   '/groups/new': typeof MainGroupsNewRoute
   '/marketplace/$id': typeof MainMarketplaceIdRoute
   '/marketplace/new': typeof MainMarketplaceNewRoute
@@ -190,9 +202,12 @@ export interface FileRoutesByFullPath {
   '/groups/': typeof MainGroupsIndexRoute
   '/marketplace/': typeof MainMarketplaceIndexRoute
   '/messages/': typeof MainMessagesIndexRoute
+  '/groups/$slug/settings': typeof MainGroupsSlugSettingsRoute
+  '/groups/$slug/': typeof MainGroupsSlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof MainIndexRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/mod': typeof MainModRoute
@@ -205,7 +220,6 @@ export interface FileRoutesByTo {
   '/feed/$id': typeof MainFeedIdRoute
   '/feed/new': typeof MainFeedNewRoute
   '/feed/search': typeof MainFeedSearchRoute
-  '/groups/$slug': typeof MainGroupsSlugRoute
   '/groups/new': typeof MainGroupsNewRoute
   '/marketplace/$id': typeof MainMarketplaceIdRoute
   '/marketplace/new': typeof MainMarketplaceNewRoute
@@ -216,11 +230,14 @@ export interface FileRoutesByTo {
   '/groups': typeof MainGroupsIndexRoute
   '/marketplace': typeof MainMarketplaceIndexRoute
   '/messages': typeof MainMessagesIndexRoute
+  '/groups/$slug/settings': typeof MainGroupsSlugSettingsRoute
+  '/groups/$slug': typeof MainGroupsSlugIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_auth': typeof AuthRouteWithChildren
   '/_main': typeof MainRouteWithChildren
+  '/verify-email': typeof VerifyEmailRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/register': typeof AuthRegisterRoute
   '/_main/mod': typeof MainModRoute
@@ -234,7 +251,6 @@ export interface FileRoutesById {
   '/_main/feed/$id': typeof MainFeedIdRoute
   '/_main/feed/new': typeof MainFeedNewRoute
   '/_main/feed/search': typeof MainFeedSearchRoute
-  '/_main/groups/$slug': typeof MainGroupsSlugRoute
   '/_main/groups/new': typeof MainGroupsNewRoute
   '/_main/marketplace/$id': typeof MainMarketplaceIdRoute
   '/_main/marketplace/new': typeof MainMarketplaceNewRoute
@@ -245,11 +261,14 @@ export interface FileRoutesById {
   '/_main/groups/': typeof MainGroupsIndexRoute
   '/_main/marketplace/': typeof MainMarketplaceIndexRoute
   '/_main/messages/': typeof MainMessagesIndexRoute
+  '/_main/groups/$slug/settings': typeof MainGroupsSlugSettingsRoute
+  '/_main/groups/$slug/': typeof MainGroupsSlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/verify-email'
     | '/login'
     | '/register'
     | '/mod'
@@ -262,7 +281,6 @@ export interface FileRouteTypes {
     | '/feed/$id'
     | '/feed/new'
     | '/feed/search'
-    | '/groups/$slug'
     | '/groups/new'
     | '/marketplace/$id'
     | '/marketplace/new'
@@ -273,9 +291,12 @@ export interface FileRouteTypes {
     | '/groups/'
     | '/marketplace/'
     | '/messages/'
+    | '/groups/$slug/settings'
+    | '/groups/$slug/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/verify-email'
     | '/login'
     | '/register'
     | '/mod'
@@ -288,7 +309,6 @@ export interface FileRouteTypes {
     | '/feed/$id'
     | '/feed/new'
     | '/feed/search'
-    | '/groups/$slug'
     | '/groups/new'
     | '/marketplace/$id'
     | '/marketplace/new'
@@ -299,10 +319,13 @@ export interface FileRouteTypes {
     | '/groups'
     | '/marketplace'
     | '/messages'
+    | '/groups/$slug/settings'
+    | '/groups/$slug'
   id:
     | '__root__'
     | '/_auth'
     | '/_main'
+    | '/verify-email'
     | '/_auth/login'
     | '/_auth/register'
     | '/_main/mod'
@@ -316,7 +339,6 @@ export interface FileRouteTypes {
     | '/_main/feed/$id'
     | '/_main/feed/new'
     | '/_main/feed/search'
-    | '/_main/groups/$slug'
     | '/_main/groups/new'
     | '/_main/marketplace/$id'
     | '/_main/marketplace/new'
@@ -327,15 +349,25 @@ export interface FileRouteTypes {
     | '/_main/groups/'
     | '/_main/marketplace/'
     | '/_main/messages/'
+    | '/_main/groups/$slug/settings'
+    | '/_main/groups/$slug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   MainRoute: typeof MainRouteWithChildren
+  VerifyEmailRoute: typeof VerifyEmailRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_main': {
       id: '/_main'
       path: ''
@@ -476,13 +508,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MainGroupsNewRouteImport
       parentRoute: typeof MainRoute
     }
-    '/_main/groups/$slug': {
-      id: '/_main/groups/$slug'
-      path: '/groups/$slug'
-      fullPath: '/groups/$slug'
-      preLoaderRoute: typeof MainGroupsSlugRouteImport
-      parentRoute: typeof MainRoute
-    }
     '/_main/feed/search': {
       id: '/_main/feed/search'
       path: '/feed/search'
@@ -518,6 +543,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MainEventsIdRouteImport
       parentRoute: typeof MainRoute
     }
+    '/_main/groups/$slug/': {
+      id: '/_main/groups/$slug/'
+      path: '/groups/$slug'
+      fullPath: '/groups/$slug/'
+      preLoaderRoute: typeof MainGroupsSlugIndexRouteImport
+      parentRoute: typeof MainRoute
+    }
+    '/_main/groups/$slug/settings': {
+      id: '/_main/groups/$slug/settings'
+      path: '/groups/$slug/settings'
+      fullPath: '/groups/$slug/settings'
+      preLoaderRoute: typeof MainGroupsSlugSettingsRouteImport
+      parentRoute: typeof MainRoute
+    }
   }
 }
 
@@ -545,7 +584,6 @@ interface MainRouteChildren {
   MainFeedIdRoute: typeof MainFeedIdRoute
   MainFeedNewRoute: typeof MainFeedNewRoute
   MainFeedSearchRoute: typeof MainFeedSearchRoute
-  MainGroupsSlugRoute: typeof MainGroupsSlugRoute
   MainGroupsNewRoute: typeof MainGroupsNewRoute
   MainMarketplaceIdRoute: typeof MainMarketplaceIdRoute
   MainMarketplaceNewRoute: typeof MainMarketplaceNewRoute
@@ -556,6 +594,8 @@ interface MainRouteChildren {
   MainGroupsIndexRoute: typeof MainGroupsIndexRoute
   MainMarketplaceIndexRoute: typeof MainMarketplaceIndexRoute
   MainMessagesIndexRoute: typeof MainMessagesIndexRoute
+  MainGroupsSlugSettingsRoute: typeof MainGroupsSlugSettingsRoute
+  MainGroupsSlugIndexRoute: typeof MainGroupsSlugIndexRoute
 }
 
 const MainRouteChildren: MainRouteChildren = {
@@ -570,7 +610,6 @@ const MainRouteChildren: MainRouteChildren = {
   MainFeedIdRoute: MainFeedIdRoute,
   MainFeedNewRoute: MainFeedNewRoute,
   MainFeedSearchRoute: MainFeedSearchRoute,
-  MainGroupsSlugRoute: MainGroupsSlugRoute,
   MainGroupsNewRoute: MainGroupsNewRoute,
   MainMarketplaceIdRoute: MainMarketplaceIdRoute,
   MainMarketplaceNewRoute: MainMarketplaceNewRoute,
@@ -581,6 +620,8 @@ const MainRouteChildren: MainRouteChildren = {
   MainGroupsIndexRoute: MainGroupsIndexRoute,
   MainMarketplaceIndexRoute: MainMarketplaceIndexRoute,
   MainMessagesIndexRoute: MainMessagesIndexRoute,
+  MainGroupsSlugSettingsRoute: MainGroupsSlugSettingsRoute,
+  MainGroupsSlugIndexRoute: MainGroupsSlugIndexRoute,
 }
 
 const MainRouteWithChildren = MainRoute._addFileChildren(MainRouteChildren)
@@ -588,6 +629,7 @@ const MainRouteWithChildren = MainRoute._addFileChildren(MainRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   MainRoute: MainRouteWithChildren,
+  VerifyEmailRoute: VerifyEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

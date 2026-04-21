@@ -19,6 +19,7 @@ interface PostFilters {
   sort?: "hot" | "new" | "top";
   q?: string;
   tag?: string;
+  groupSlug?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +66,7 @@ export function usePostsInfinite(filters?: PostFilters) {
       filters?.sort ?? null,
       filters?.q ?? null,
       filters?.tag ?? null,
+      filters?.groupSlug ?? null,
     ],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams();
@@ -72,6 +74,7 @@ export function usePostsInfinite(filters?: PostFilters) {
       if (filters?.sort) params.set("sort", filters.sort);
       if (filters?.q) params.set("q", filters.q);
       if (filters?.tag) params.set("tag", filters.tag);
+      if (filters?.groupSlug) params.set("groupSlug", filters.groupSlug);
       if (pageParam) params.set("cursor", pageParam as string);
       params.set("limit", "20");
       return api.get<PostsPage>(`/api/posts?${params}`);
@@ -191,6 +194,7 @@ export function useCreatePost() {
       tags: string[];
       images?: string[];
       poll?: PollDraft;
+      groupSlug?: string;
     }) => api.post("/api/posts", data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["posts", "infinite"] }),
   });

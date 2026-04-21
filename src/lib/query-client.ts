@@ -17,27 +17,27 @@ export const STALE = {
 } as const;
 
 /**
- * Singleton QueryClient shared between the React tree (QueryClientProvider)
- * and route loaders (which run outside React context).
- *
- * Extracted here to avoid circular imports between __root.tsx and route files
- * that need queryClient.ensureQueryData() in their loaders.
+ * Per-request factory. SSR creates a fresh client for each incoming request;
+ * the browser creates one on hydration. The router exposes this instance via
+ * `context.queryClient` — route loaders must read it from context, not import
+ * a singleton (which would leak state across SSR requests).
  */
-export const queryClient = new QueryClient({
-  mutationCache: new MutationCache({
-    onError: (error) => {
-      if (error instanceof ApiError && error.status === 401) {
-        toast.error("Authentication required", {
-          description: "Please log in to continue.",
-        });
-        const redirect = window.location.pathname + window.location.search;
-        window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
-      }
+export function createQueryClient() {
+  return new QueryClient({
+    mutationCache: new MutationCache({
+      onError: (error) => {
+        if (typeof window === "undefined") return;
+        if (error instanceof ApiError && error.status === 401) {
+          toast.error("Authentication required", {
+            description: "Please log in to continue.",
+          });
+          const redirect = window.location.pathname + window.location.search;
+          window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
+        }
+      },
+    }),
+    defaultOptions: {
+      queries: { staleTime: STALE.SHORT, retry: 1 },
     },
-  }),
-  defaultOptions: {
-    // STALE.SHORT is the global default — hooks that need the same value
-    // should omit staleTime rather than restating it.
-    queries: { staleTime: STALE.SHORT, retry: 1 },
-  },
-});
+  });
+}

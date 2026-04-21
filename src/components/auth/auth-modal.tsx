@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -21,16 +22,21 @@ export function AuthModal() {
     if (isOpen) setView(initialView);
   }, [isOpen, initialView]);
 
-  function handleSuccess() {
+  function handleLoginSuccess() {
     close();
     // Run after the modal closes so the session query has a tick to settle.
-    // useLogin/useRegister already called invalidateQueries(["auth"]), so by
-    // the time this microtask runs the refetch is in flight and the component
-    // tree holding the action (VoteControl, CommentThread, etc.) is still
-    // mounted with the right closure state.
+    // useLogin already called invalidateQueries(["auth"]), so by the time this
+    // microtask runs the refetch is in flight and the component tree holding
+    // the action (VoteControl, CommentThread, etc.) is still mounted with the
+    // right closure state.
     if (pendingCallback) {
       setTimeout(pendingCallback, 0);
     }
+  }
+
+  function handleSignupSuccess(email: string) {
+    close();
+    toast.info(`We sent a verification link to ${email}. Verify your email, then sign in.`);
   }
 
   const isSignup = view === "signup";
@@ -50,9 +56,9 @@ export function AuthModal() {
         </DialogHeader>
 
         {isSignup ? (
-          <SignupForm onSuccess={handleSuccess} />
+          <SignupForm onSuccess={handleSignupSuccess} />
         ) : (
-          <LoginForm onSuccess={handleSuccess} />
+          <LoginForm onSuccess={handleLoginSuccess} />
         )}
 
         <p className="mt-4 text-center text-xs text-muted-foreground">

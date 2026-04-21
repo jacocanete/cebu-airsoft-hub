@@ -2,11 +2,17 @@ import type { Server } from "socket.io";
 import { prisma } from "../prisma.js";
 
 export type NotificationType =
-  | "comment_on_post"   // someone commented on your post
-  | "reply_to_comment"  // someone replied to your comment
-  | "post_removed"      // mod removed your post
-  | "comment_removed"   // mod removed your comment
-  | "account_banned";   // you were banned
+  | "comment_on_post"        // someone commented on your post
+  | "reply_to_comment"       // someone replied to your comment
+  | "post_removed"           // mod removed your post
+  | "comment_removed"        // mod removed your comment
+  | "account_banned"         // you were banned
+  | "group_join_request"     // new join request for a group you own/admin
+  | "group_join_approved"    // your join request was approved
+  | "group_join_rejected"    // your join request was rejected
+  | "group_invite_received"  // someone invited you to a group
+  | "group_invite_accepted"  // your invite was accepted
+  | "group_invite_declined"; // your invite was declined
 
 interface CreateNotificationParams {
   io: Server;

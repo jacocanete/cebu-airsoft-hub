@@ -56,7 +56,7 @@ function EmptyFeedState({
       <MessageSquare className="h-10 w-10 text-muted-foreground/20 mb-4" />
       <p className="label-military text-muted-foreground mb-4">{message}</p>
       <Link
-        to="/feed/new"
+        to="/feed/new" search={{ groupSlug: undefined }}
         className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85"
       >
         <Plus className="h-3.5 w-3.5" />
@@ -151,7 +151,7 @@ function FeedPage() {
             ))}
           </div>
           <Link
-            to="/feed/new"
+            to="/feed/new" search={{ groupSlug: undefined }}
             className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/85"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -253,7 +253,7 @@ function FeedPage() {
                 </Link>
               )}
               <Link
-                to="/feed/new"
+                to="/feed/new" search={{ groupSlug: undefined }}
                 className="block rounded border border-border px-3 py-2 text-center text-xs font-semibold uppercase tracking-widest transition-colors hover:bg-accent hover:border-primary/50"
               >
                 Create a post

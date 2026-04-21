@@ -8,7 +8,6 @@ import { Badge } from "@/components/shared/badge";
 import { PROSE_CLASSES } from "@/lib/prose";
 import { useListingDetail, listingDetailQueryOptions } from "@/hooks/use-marketplace";
 import { useCurrentUser } from "@/hooks/use-auth";
-import { queryClient } from "@/lib/query-client";
 import { BackLink } from "@/components/shared/back-link";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
 import { ShareButton } from "@/components/shared/share-button";
@@ -19,8 +18,8 @@ import { SellerReviewSection } from "@/components/marketplace/seller-review-sect
 import { RelatedListings } from "@/components/marketplace/related-listings";
 
 export const Route = createFileRoute("/_main/marketplace/$id")({
-  loader: ({ params }) =>
-    queryClient.ensureQueryData(listingDetailQueryOptions(params.id)),
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(listingDetailQueryOptions(params.id)),
   pendingComponent: () => (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <SkeletonCard height="h-[600px]" />

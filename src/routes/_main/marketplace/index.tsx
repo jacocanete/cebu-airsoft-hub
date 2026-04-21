@@ -72,7 +72,12 @@ function MarketplacePage() {
   const { featuredListings, regularListings } = useMemo(() => {
     const featured: typeof allItems = [];
     const regular: typeof allItems = [];
-    for (const l of allItems) (l.featured ? featured : regular).push(l);
+    const featuredCutoffMs = Date.now() - 24 * 60 * 60 * 1000;
+    for (const l of allItems) {
+      const isActiveFeatured =
+        l.featured && l.featuredAt && new Date(l.featuredAt).getTime() >= featuredCutoffMs;
+      (isActiveFeatured ? featured : regular).push(l);
+    }
     return { featuredListings: featured, regularListings: regular };
   }, [allItems]);
 

@@ -13,7 +13,6 @@ import { MessageInput } from "@/components/messages/MessageInput";
 import { useConversation, useMessages, useMarkConversationRead, conversationQueryOptions } from "@/hooks/use-messages";
 import { useBlockUser, useUnblockUser, useIsBlocked } from "@/hooks/use-blocks";
 import { useCurrentUser } from "@/hooks/use-auth";
-import { queryClient } from "@/lib/query-client";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -24,8 +23,8 @@ import {
 import { MoreHorizontal } from "lucide-react";
 
 export const Route = createFileRoute("/_main/messages/$id")({
-  loader: ({ params }) =>
-    queryClient.ensureQueryData(conversationQueryOptions(params.id)),
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(conversationQueryOptions(params.id)),
   pendingComponent: () => (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
       <SkeletonList count={3} height="h-10" />

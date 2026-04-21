@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { BarChart2 } from "lucide-react";
+import { BarChart2, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { useCreatePost } from "@/hooks/use-posts";
+import { useGroupDetail } from "@/hooks/use-groups";
 import { PostEditor } from "@/components/feed/post-editor";
 import { PollBuilder } from "@/components/feed/poll-builder";
 import { TagInput } from "@/components/feed/tag-input";
@@ -11,13 +12,18 @@ import type { PollDraft, Upload } from "@/types";
 import { FORUM_CATEGORIES } from "@/lib/constants";
 import { BackLink } from "@/components/shared/back-link";
 import { PageHeader } from "@/components/shared/page-header";
+import { getCachedSession } from "@/lib/queries/session";
 
 export const Route = createFileRoute("/_main/feed/new")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    groupSlug: typeof search.groupSlug === "string" ? search.groupSlug : undefined,
+  }),
   head: () => ({
     meta: [{ title: "Create Post | Cebu Airsoft Hub" }],
   }),
   beforeLoad: ({ context, location }) => {
-    if (!context.session?.user) {
+    const session = getCachedSession(context.queryClient);
+    if (!session?.user) {
       throw redirect({
         to: "/login",
         search: { redirect: location.href },
@@ -28,9 +34,14 @@ export const Route = createFileRoute("/_main/feed/new")({
 });
 
 function NewPostPage() {
+  const { groupSlug } = Route.useSearch();
+  const { data: group } = useGroupDetail(groupSlug ?? "");
+  const postingToGroup = !!groupSlug && !!group;
+
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [category, setCategory] = useState("");
+  // Group posts skip the category selector — default to "General" server-side.
+  const [category, setCategory] = useState(groupSlug ? "General" : "");
   const [tags, setTags] = useState<string[]>([]);
   const [images, setImages] = useState<Upload[]>([]);
   const [poll, setPoll] = useState<PollDraft | null>(null);
@@ -62,6 +73,7 @@ function NewPostPage() {
         tags,
         images: images.map((u) => u.url),
         ...(poll ? { poll } : {}),
+        ...(groupSlug ? { groupSlug } : {}),
       },
       {
         onSuccess: (data) => {
@@ -78,9 +90,34 @@ function NewPostPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      <BackLink to="/feed" label="Back to Forum" />
+      {postingToGroup ? (
+        <Link
+          to="/groups/$slug"
+          params={{ slug: groupSlug! }}
+          className="mb-6 inline-flex items-center gap-1.5 label-military transition-colors hover:text-primary"
+        >
+          ← Back to {group.name}
+        </Link>
+      ) : (
+        <BackLink to="/feed" label="Back to Forum" />
+      )}
 
-      <div className="mb-8"><PageHeader eyebrow="Forum" title="Create a Post" /></div>
+      <div className="mb-8">
+        <PageHeader
+          eyebrow={postingToGroup ? group.name : "Forum"}
+          title="Create a Post"
+        />
+      </div>
+
+      {postingToGroup && (
+        <div className="mb-5 inline-flex items-center gap-2 rounded border border-primary/30 bg-primary/5 px-3 py-2">
+          <Shield className="h-4 w-4 text-primary" />
+          <p className="text-xs text-foreground">
+            Posting in <span className="font-bold">{group.name}</span> — visible to
+            members only.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
@@ -89,13 +126,15 @@ function NewPostPage() {
           <p className="text-[11px] text-muted-foreground text-right">{title.length}/200</p>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="label-military text-foreground" htmlFor="category">Category <span className="text-primary">*</span></label>
-          <select id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">
-            <option value="">Select a category...</option>
-            {FORUM_CATEGORIES.map((c) => (<option key={c} value={c}>{c}</option>))}
-          </select>
-        </div>
+        {!postingToGroup && (
+          <div className="flex flex-col gap-1.5">
+            <label className="label-military text-foreground" htmlFor="category">Category <span className="text-primary">*</span></label>
+            <select id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">
+              <option value="">Select a category...</option>
+              {FORUM_CATEGORIES.map((c) => (<option key={c} value={c}>{c}</option>))}
+            </select>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="post-body" className="label-military text-foreground">Body <span className="text-primary">*</span></label>
@@ -139,7 +178,19 @@ function NewPostPage() {
         <div className="flex items-center justify-between gap-4 pt-4 border-t border-border">
           <p className="text-xs text-muted-foreground">By posting, you agree to the community rules.</p>
           <div className="flex gap-2">
-            <Link to="/feed" search={{ tag: undefined, sort: "new", category: "All" }} className="btn-ghost">Cancel</Link>
+            {postingToGroup ? (
+              <Link
+                to="/groups/$slug"
+                params={{ slug: groupSlug! }}
+                className="btn-ghost"
+              >
+                Cancel
+              </Link>
+            ) : (
+              <Link to="/feed" search={{ tag: undefined, sort: "new", category: "All" }} className="btn-ghost">
+                Cancel
+              </Link>
+            )}
             <button
               type="button"
               disabled={!canSubmit || createPost.isPending}

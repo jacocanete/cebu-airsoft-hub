@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { queryClient } from "@/lib/query-client";
 import { postDetailQueryOptions } from "@/hooks/use-posts";
-import { Flag, Pin, Lock } from "lucide-react";
+import { Flag, Pin, Lock, Shield } from "lucide-react";
 import { ShareButton } from "@/components/shared/share-button";
 import { CommentThread } from "@/components/feed/comment-thread";
 import { VoteControl } from "@/components/shared/vote-control";
@@ -21,9 +20,12 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { SkeletonCard } from "@/components/shared/skeleton-list";
 import { usePostDetail, useUpdatePost, useVote } from "@/hooks/use-posts";
 import { useComments, useCreateComment, type CommentSort } from "@/hooks/use-comments";
+import { useCommentAncestors } from "@/hooks/use-replies";
+import { parseCommentAnchor, scrollToCommentAnchor } from "@/lib/comment-anchor";
 import { usePostRoom } from "@/hooks/use-post-room";
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import { useCurrentUser } from "@/hooks/use-auth";
+import { useGroupDetail } from "@/hooks/use-groups";
 import { useRemovePost, useRestorePost, usePinPost, useLockPost, useDeletePost } from "@/hooks/use-moderation";
 import { ReportDialog } from "@/components/shared/report-dialog";
 import { ContentActionsMenu } from "@/components/shared/content-actions-menu";
@@ -63,8 +65,8 @@ export const Route = createFileRoute("/_main/feed/$id")({
   // useSuspenseQuery in usePostDetail then reads from cache synchronously on
   // both server and client, so there is never a loading state that could
   // cause a hydration mismatch.
-  loader: ({ params }) =>
-    queryClient.ensureQueryData(postDetailQueryOptions(params.id)),
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(postDetailQueryOptions(params.id)),
   pendingComponent: () => (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <SkeletonCard />
@@ -74,6 +76,18 @@ export const Route = createFileRoute("/_main/feed/$id")({
     const post = loaderData as PostDetail | undefined;
     if (!post) {
       return { meta: [{ title: "Post | Cebu Airsoft Hub" }] };
+    }
+
+    // Group posts are members-only — don't emit previewable meta or let
+    // crawlers index them. Link previews outside the site would otherwise
+    // leak the title/excerpt of private content.
+    if (post.group) {
+      return {
+        meta: [
+          { title: `${post.group.name} | Cebu Airsoft Hub` },
+          { name: "robots", content: "noindex, nofollow" },
+        ],
+      };
     }
 
     const title = `${post.title} — Cebu Airsoft Hub`;
@@ -124,6 +138,8 @@ function PostPage() {
   const [pinnedNewIds, setPinnedNewIds] = useState<string[]>([]);
   const newCommentIdRef = useRef<string | null>(null);
 
+  const [hashCommentId, setHashCommentId] = useState<string | null>(null);
+
   // All hooks called unconditionally — before any early return
   const vote = useVote();
   const updatePost = useUpdatePost(id);
@@ -155,18 +171,52 @@ function PostPage() {
     if (!pending) return;
     if (!comments.some((c) => c.id === pending)) return;
 
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    const el = document.getElementById(`comment-${pending}`);
-    if (el) {
-      el.scrollIntoView({
-        behavior: prefersReducedMotion ? "auto" : "smooth",
-        block: "center",
-      });
-    }
+    scrollToCommentAnchor(pending);
     newCommentIdRef.current = null;
   }, [comments]);
+
+  useEffect(() => {
+    function readHash() {
+      setHashCommentId(parseCommentAnchor(window.location.hash));
+    }
+    readHash();
+    window.addEventListener("hashchange", readHash);
+    return () => window.removeEventListener("hashchange", readHash);
+  }, []);
+
+  // Nested replies mount asynchronously (after each ancestor's replies query
+  // resolves), so poll briefly until the target exists.
+  useEffect(() => {
+    if (!hashCommentId) return;
+
+    let timeoutId: number | undefined;
+    const deadline = Date.now() + 8000;
+
+    function tryScroll() {
+      if (scrollToCommentAnchor(hashCommentId!)) return;
+      if (Date.now() < deadline) {
+        timeoutId = window.setTimeout(tryScroll, 150);
+      }
+    }
+    tryScroll();
+
+    return () => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
+  }, [hashCommentId]);
+
+  const highlightIds = useMemo(
+    () => (hashCommentId ? [...pinnedNewIds, hashCommentId] : pinnedNewIds),
+    [pinnedNewIds, hashCommentId],
+  );
+
+  const { data: ancestorIds } = useCommentAncestors(id, hashCommentId);
+  const forceExpandIds = useMemo(() => {
+    if (!hashCommentId) return undefined;
+    const set = new Set<string>(ancestorIds ?? []);
+    set.add(hashCommentId);
+    return set;
+  }, [ancestorIds, hashCommentId]);
 
   const user = session?.user ?? null;
   const upvotes = post.upvotes ?? 0;
@@ -178,7 +228,12 @@ function PostPage() {
     [post.poll],
   );
   const isRemoved = !!post.deletedAt;
-  const userIsMod = isMod(user);
+  // If the post is in a group, also treat group OWNER/ADMIN as a moderator.
+  const { data: postGroup } = useGroupDetail(post.group?.slug ?? "");
+  const viewerGroupRole = postGroup?.viewerMembership?.role ?? null;
+  const isGroupStaff =
+    viewerGroupRole === "OWNER" || viewerGroupRole === "ADMIN";
+  const userIsMod = isMod(user) || isGroupStaff;
 
   function handleComment(e: React.FormEvent) {
     e.preventDefault();
@@ -199,7 +254,14 @@ function PostPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <BackLink to="/feed" label="Back to Forum" />
+      {post.group ? (
+        <BackLink
+          to={`/groups/${post.group.slug}`}
+          label={`Back to ${post.group.name}`}
+        />
+      ) : (
+        <BackLink to="/feed" label="Back to Forum" />
+      )}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-10">
         <div className="flex-1 min-w-0">
@@ -216,19 +278,37 @@ function PostPage() {
                     <Lock className="h-3 w-3" aria-hidden /> Locked
                   </span>
                 )}
-                <Badge colorClass={CATEGORY_COLORS[post.category] ?? FALLBACK_BADGE}>
-                  {post.category}
-                </Badge>
-                {!isRemoved && post.tags.map((tag: string) => (
+                {!post.group && (
+                  <Badge colorClass={CATEGORY_COLORS[post.category] ?? FALLBACK_BADGE}>
+                    {post.category}
+                  </Badge>
+                )}
+                {post.group && (
                   <Link
-                    key={tag}
-                    to="/feed"
-                    search={{ tag, sort: "new", category: "All" }}
-                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                    to="/groups/$slug"
+                    params={{ slug: post.group.slug }}
+                    className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary hover:bg-primary/10 transition-colors"
                   >
-                    #{tag}
+                    <Shield className="h-3 w-3" aria-hidden />
+                    {post.group.name}
                   </Link>
-                ))}
+                )}
+                {!isRemoved && post.tags.map((tag: string) =>
+                  post.group ? (
+                    <span key={tag} className="text-xs text-muted-foreground">
+                      #{tag}
+                    </span>
+                  ) : (
+                    <Link
+                      key={tag}
+                      to="/feed"
+                      search={{ tag, sort: "new", category: "All" }}
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      #{tag}
+                    </Link>
+                  ),
+                )}
               </div>
               {(user?.id === post.author.id || userIsMod) && (
                 <ContentActionsMenu
@@ -287,16 +367,18 @@ function PostPage() {
                   aria-label="Post title"
                   className="input-field text-base font-bold"
                 />
-                <select
-                  value={editCategory}
-                  onChange={(e) => setEditCategory(e.target.value)}
-                  aria-label="Post category"
-                  className="input-field w-auto"
-                >
-                  {FORUM_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                {!post.group && (
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    aria-label="Post category"
+                    className="input-field w-auto"
+                  >
+                    {FORUM_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                )}
                 <PostEditor id="edit-post-body" value={editContent} onChange={setEditContent} minRows={8} />
                 <div className="flex flex-col gap-1.5">
                   <label className="label-military text-foreground">Tags</label>
@@ -431,7 +513,7 @@ function PostPage() {
                 layout="horizontal"
               />
 
-              <ShareButton />
+              {!post.group && <ShareButton />}
               <button
                 onClick={() => setReportOpen(true)}
                 className="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 label-military text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
@@ -508,7 +590,8 @@ function PostPage() {
               <CommentThread
                 comments={orderedComments}
                 postId={id}
-                highlightIds={pinnedNewIds}
+                highlightIds={highlightIds}
+                forceExpandIds={forceExpandIds}
               />
             )}
           </div>
@@ -560,7 +643,7 @@ function PostPage() {
               Post your guides, reviews, or questions in the forum.
             </p>
             <Link
-              to="/feed/new"
+              to="/feed/new" search={{ groupSlug: undefined }}
               className="block rounded bg-primary px-3 py-2 text-center label-military text-primary-foreground hover:bg-primary/85 transition-colors"
             >
               Create a post

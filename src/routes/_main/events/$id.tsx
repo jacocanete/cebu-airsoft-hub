@@ -18,11 +18,10 @@ import { useEventDetail, useRsvp, eventDetailQueryOptions } from "@/hooks/use-ev
 import { useRequireAuth } from "@/hooks/use-require-auth";
 import { ShareButton } from "@/components/shared/share-button";
 import { ReportDialog } from "@/components/shared/report-dialog";
-import { queryClient } from "@/lib/query-client";
 
 export const Route = createFileRoute("/_main/events/$id")({
-  loader: ({ params }) =>
-    queryClient.ensureQueryData(eventDetailQueryOptions(params.id)),
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(eventDetailQueryOptions(params.id)),
   pendingComponent: () => (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <SkeletonCard />

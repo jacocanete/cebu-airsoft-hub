@@ -1,7 +1,4 @@
-import { config } from "dotenv";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
-config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "../../.env") });
+import "./env.js";
 
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
@@ -25,6 +22,7 @@ import conversationsRoutes from "./routes/messages.js";
 import blocksRoutes from "./routes/blocks.js";
 import uploadsRoutes from "./routes/uploads.js";
 import { globalLimiter, authLimiter, mutationLimiter } from "./middleware/rate-limit.js";
+import { verifyTransport } from "./lib/mailer.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -106,6 +104,7 @@ const port = Number(process.env.PORT ?? 3001);
 
 async function start() {
   await prisma.$connect();
+  void verifyTransport();
   httpServer.listen(port, () => {
     console.log(`API running on http://localhost:${port}`);
   });

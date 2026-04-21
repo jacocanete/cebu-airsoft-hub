@@ -109,7 +109,7 @@ router.get("/:username/posts", async (req, res) => {
   }
 
   const posts = await prisma.post.findMany({
-    where: { authorId: user.id },
+    where: { authorId: user.id, groupId: null },
     select: {
       id: true,
       title: true,
@@ -123,6 +123,67 @@ router.get("/:username/posts", async (req, res) => {
   });
 
   res.json(posts);
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/users/:username/comments
+// ---------------------------------------------------------------------------
+
+router.get("/:username/comments", async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { username: req.params.username as string },
+    select: { id: true },
+  });
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const comments = await prisma.comment.findMany({
+    where: {
+      authorId: user.id,
+      deletedAt: null,
+      post: { groupId: null },
+    },
+    select: {
+      id: true,
+      content: true,
+      createdAt: true,
+      editedAt: true,
+      post: { select: { id: true, title: true } },
+      _count: { select: { votes: true, replies: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  res.json(comments);
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/users/:username/listings
+// ---------------------------------------------------------------------------
+
+router.get("/:username/listings", async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { username: req.params.username as string },
+    select: { id: true },
+  });
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const listings = await prisma.marketplaceListing.findMany({
+    where: { sellerId: user.id },
+    include: { seller: { select: { id: true, username: true, name: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  res.json(listings);
 });
 
 // ---------------------------------------------------------------------------
